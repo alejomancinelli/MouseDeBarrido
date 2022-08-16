@@ -91,14 +91,18 @@ ISR(TIMER1_COMPA_vect){
   Serial.print("GND_LED_3: ");
   Serial.println(digitalRead(GND_LED_3));
   digitalWrite(MATRIZ_LED[1][i], HIGH);
-  digitalWrite(MATRIZ_LED[1][i+1], LOW);
   digitalWrite(MATRIZ_LED[0][j], LOW);
-  digitalWrite(MATRIZ_LED[0][j+1], HIGH);
-  j++;
+  Serial.print(i);
+  Serial.print(j);
+  
+    j++;
   if(j > 2){
     j = 0;
-    i > 2 ? i = 0 : i++;
+    i == 2 ? i = 0 : i++;
   }
+  digitalWrite(MATRIZ_LED[1][i], LOW);
+  digitalWrite(MATRIZ_LED[0][j], HIGH);
+
 }
 //Bandera temporal
 
