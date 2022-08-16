@@ -1,7 +1,7 @@
  //----------------------------------------------------------------Pines
  // USB(0,1) PULSADOR_USUARIO(2) PULSADOR_VELOCIDAD(3) BUZZER(5) PULSADOR_CONTROL(6) LED_VEL(9) LED_CONTROL(10) BT(7,8)
- // MATRIZ LEDS(4,14,15,16,A0,A1,A2,A3)
-int VCC_LED_1=7, VCC_LED_2=6, VCC_LED_3=5, GND_LED_1=4, GND_LED_2=3, GND_LED_3=2; //VCC_LED_1 VCC_LED_2 y VCC_LED_3 leds pin 4 5 6 columnas
+ // MATRIZ LEDS(A0, A1, A2, 16, 14, 15) multiplexados
+int VCC_LED_1=A0, VCC_LED_2=A1, VCC_LED_3=A2, GND_LED_1=16, GND_LED_2=14, GND_LED_3=15; 
 int MATRIZ_LED[2][3] = {{VCC_LED_1, VCC_LED_2, VCC_LED_3}, {GND_LED_1, GND_LED_2, GND_LED_3}};
 int i=0, j=0;
 //------------------------------------------------------------------Librerías
@@ -26,10 +26,10 @@ void setup() {
   TCCR1A = 0;
   TCCR1B = 0;
   TCNT1 = 0;
-  OCR1A =65000;
+  OCR1A = 65000;
   TCCR1B |= (1 << WGM12); //CTC
   TCCR1B |= (1 << CS12); 
-   //prescaler
+  // Prescaler
   TIMSK1 |= (1 << OCIE1A);
   interrupts();
 //Entradas salidas
