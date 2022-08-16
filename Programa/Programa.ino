@@ -3,7 +3,7 @@
  // USB(0,1) PULSADOR_USUARIO(2) PULSADOR_VELOCIDAD(3) BUZZER(5) PULSADOR_CONTROL(6) LED_VEL(9) LED_CONTROL(10) BT(7,8)
  // MATRIZ LEDS(4,14,15,16,A0,A1,A2,A3)
  int VCC_LED_1=7, VCC_LED_2=6, VCC_LED_3=5, GND_LED_1=4, GND_LED_2=3, GND_LED_3=2; //VCC_LED_1 VCC_LED_2 y VCC_LED_3 leds pin 4 5 6 columnas
-int MATRIZ_LED[] = {VCC_LED_1, VCC_LED_2, VCC_LED_3; GND_LED_1, GND_LED_2, GND_LED_3};
+int MATRIZ_LED[2][3] = {{VCC_LED_1, VCC_LED_2, VCC_LED_3}, {GND_LED_1, GND_LED_2, GND_LED_3}};
 int i=0, j=0;
 
 //------------------------------------------------------------------Librerías
@@ -78,17 +78,26 @@ void loop() {
 
 //------------------------------------------------------------------ISR
 ISR(TIMER1_COMPA_vect){
-  digitalWrite(MATRIZ_LED[0][i], HIGH);
-  digitalWrite(MATRIZ_LED[0][i+1], LOW);
-  i++;
+  Serial.print("VCC_LED_1: ");
+  Serial.println(digitalRead(VCC_LED_1));
+  Serial.print("VCC_LED_2: ");
+  Serial.println(digitalRead(VCC_LED_2));
+  Serial.print("VCC_LED_3: ");
+  Serial.println(digitalRead(VCC_LED_3));
+  Serial.print("GND_LED_1: ");
+  Serial.println(digitalRead(GND_LED_1));
+  Serial.print("GND_LED_2: ");
+  Serial.println(digitalRead(GND_LED_2));
+  Serial.print("GND_LED_3: ");
+  Serial.println(digitalRead(GND_LED_3));
+  digitalWrite(MATRIZ_LED[1][i], HIGH);
+  digitalWrite(MATRIZ_LED[1][i+1], LOW);
   digitalWrite(MATRIZ_LED[0][j], LOW);
   digitalWrite(MATRIZ_LED[0][j+1], HIGH);
   j++;
-  if(i > 2){
-    i = 0;
-  }
   if(j > 2){
     j = 0;
+    i > 2 ? i = 0 : i++;
   }
 }
 //Bandera temporal
