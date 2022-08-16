@@ -2,7 +2,8 @@
  //----------------------------------------------------------------Pines
  // USB(0,1) PULSADOR_USUARIO(2) PULSADOR_VELOCIDAD(3) BUZZER(5) PULSADOR_CONTROL(6) LED_VEL(9) LED_CONTROL(10) BT(7,8)
  // MATRIZ LEDS(4,14,15,16,A0,A1,A2,A3)
- int pin1=7, pin2=6, pin3=5, pin4=4, pin5=3, pin6=2; //pin1 pin2 y pin3 leds pin 4 5 6 columnas
+ int VCC_LED_1=7, VCC_LED_2=6, VCC_LED_3=5, GND_LED_1=4, GND_LED_2=3, GND_LED_3=2; //VCC_LED_1 VCC_LED_2 y VCC_LED_3 leds pin 4 5 6 columnas
+int MATRIZ_LED[] = {VCC_LED_1, VCC_LED_2, VCC_LED_3; GND_LED_1, GND_LED_2, GND_LED_3};
 int i=0, j=0;
 
 //------------------------------------------------------------------Librerías
@@ -15,12 +16,12 @@ int i=0, j=0;
 // probando el git
 void setup() {
   Serial.begin(9600);
-  pinMode(pin1, OUTPUT);
-  pinMode(pin2, OUTPUT);
-  pinMode(pin3, OUTPUT);
-  pinMode(pin4, OUTPUT);
-  pinMode(pin5, OUTPUT);
-  pinMode(pin6, OUTPUT);
+  pinMode(VCC_LED_1, OUTPUT);
+  pinMode(VCC_LED_2, OUTPUT);
+  pinMode(VCC_LED_3, OUTPUT);
+  pinMode(GND_LED_1, OUTPUT);
+  pinMode(GND_LED_2, OUTPUT);
+  pinMode(GND_LED_3, OUTPUT);
   noInterrupts();
   TCCR1A = 0;
   TCCR1B = 0;
@@ -36,7 +37,9 @@ void setup() {
 //BT
 //Timers
 //Valores iniciales
-
+digitalWrite(GND_LED_1, HIGH);
+digitalWrite(GND_LED_2, HIGH);
+digitalWrite(GND_LED_3, HIGH);
 }
 
 
@@ -75,60 +78,20 @@ void loop() {
 
 //------------------------------------------------------------------ISR
 ISR(TIMER1_COMPA_vect){
-  if(i==0){
-    digitalWrite(pin4, LOW);
-    digitalWrite(pin5, HIGH);
-    digitalWrite(pin6, HIGH);
-    switch (j){
-      case 0:
-      digitalWrite(pin3,LOW);
-      digitalWrite(pin1,HIGH);
-      j++;
-      break;
-      case 1:
-      digitalWrite(pin1,LOW);
-      digitalWrite(pin2,HIGH);
-      j++;
-      break;
-      case 2:
-      digitalWrite(pin2,LOW);
-      digitalWrite(pin3,HIGH);
-      j=0;
-      i++;
-      break;
-      }
-      
+  digitalWrite(MATRIZ_LED[0][i], HIGH);
+  digitalWrite(MATRIZ_LED[0][i+1], LOW);
+  i++;
+  digitalWrite(MATRIZ_LED[0][j], LOW);
+  digitalWrite(MATRIZ_LED[0][j+1], HIGH);
+  j++;
+  if(i > 2){
+    i = 0;
   }
-  else
-    {
-    digitalWrite(pin4, HIGH);
-    digitalWrite(pin5, LOW);
-    digitalWrite(pin6, HIGH);
-    switch (j){
-      case 0:
-      digitalWrite(pin3,LOW);
-      digitalWrite(pin1,HIGH);
-      j++;
-      break;
-      case 1:
-      digitalWrite(pin1,LOW);
-      digitalWrite(pin2,HIGH);
-      j++;
-      break;
-      case 2:
-      digitalWrite(pin2,LOW);
-      digitalWrite(pin3,HIGH);
-      j=0;
-      i=0;
-      break;
-      }
-     
+  if(j > 2){
+    j = 0;
   }
-
 }
 //Bandera temporal
-
-
 
 
 //------------------------------------------------------------------Funciones
