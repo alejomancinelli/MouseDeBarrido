@@ -1,16 +1,14 @@
-//----------------------------------------------------------------Pines
+//---------------------------------------------------------------- Pines
 // USB(0,1) PULSADOR_USUARIO(2) PULSADOR_VELOCIDAD(3) BUZZER(5) PULSADOR_CONTROL(6) LED_VEL(9) LED_CONTROL(10) BT(7,8)
 // MATRIZ LEDS(A0, A1, A2, 16, 14, 15) multiplexados
 
-//------------------------------------------------------------------Librerías
+//---------------------------------------------------------------- Librerías
 
-//------------------------------------------------------------------Declaraciones
-//CREAR VARIABLE ESTADO(en que momento de la secuencia estoy parado
-const int PULSADOR_USUARIO = 2;
-const int PULSADOR_VEL_MOUSE = 3;
-const int PULSADOR_VEL_DISPLAY = 6;
-
-const int VCC_LED_1 = A0, 
+//---------------------------------------------------------------- Declaraciones
+const int PULSADOR_USUARIO = 2,
+          PULSADOR_VEL_MOUSE = 3,
+          PULSADOR_VEL_DISPLAY = 6, 
+          VCC_LED_1 = A0, 
           VCC_LED_2 = A1, 
           VCC_LED_3 = A2, 
           GND_LED_1 = 16, 
@@ -19,10 +17,16 @@ const int VCC_LED_1 = A0,
           
 const int MATRIZ_LED[2][3] = {{VCC_LED_1, VCC_LED_2, VCC_LED_3}, 
                               {GND_LED_1, GND_LED_2, GND_LED_3}};
-int i=0, j=0;
+
+bool arrayLedsEncendidos[3][3] = {{0, 0, 0}, 
+                                  {0, 0, 0}, 
+                                  {0, 0, 0}};
+
+// Por como tratamos a la matriz, las filas se encuentras a GND y las columnas a VCC, pero se podría cambiar
+int matrizFila = 0, matrizColumna = 0; 
 bool userInput = 1;
-//------------------------------------------------------------------setup
-// probando el git
+
+//---------------------------------------------------------------- Setup
 void setup() {
   Serial.begin(9600);
   pinMode(VCC_LED_1, OUTPUT);
@@ -44,7 +48,6 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(PULSADOR_USUARIO), selectorGeneral, RISING);
   attachInterrupt(digitalPinToInterrupt(PULSADOR_VEL_MOUSE), selectorVelMouse, RISING);
   attachInterrupt(digitalPinToInterrupt(PULSADOR_VEL_DISPLAY), selectorVelDisplay, RISING);
-  
   interrupts();
   //Entradas salidas
   //USB
@@ -54,12 +57,10 @@ void setup() {
   digitalWrite(GND_LED_1, HIGH);
   digitalWrite(GND_LED_2, HIGH);
   digitalWrite(GND_LED_3, HIGH);
-  
-
 }
 
 
-//------------------------------------------------------------------Loop
+//---------------------------------------------------------------- Loop
 void loop() {
   
 
@@ -91,23 +92,25 @@ void loop() {
 }
 
 
-//------------------------------------------------------------------ISR
+//---------------------------------------------------------------- ISR
 ISR(TIMER1_COMPA_vect){
-  digitalWrite(MATRIZ_LED[1][i], HIGH);
-  digitalWrite(MATRIZ_LED[0][j], LOW);
-  j++;
-  if(j > 2){
-    j = 0;
-    i == 2 ? i = 0 : i++;
+  digitalWrite(MATRIZ_LED[1][matrizFila], HIGH);
+  digitalWrite(MATRIZ_LED[0][matrizColumna], LOW);
+  arrayLedsEncendidos[matrizFila][matrizColumna] = 0;
+  matrizColumna++;
+  if(matrizColumna > 2){
+    matrizColumna = 0;
+    matrizFila == 2 ? matrizFila = 0 : matrizFila++;
   }
-  digitalWrite(MATRIZ_LED[1][i], LOW);
-  digitalWrite(MATRIZ_LED[0][j], HIGH);
+  digitalWrite(MATRIZ_LED[1][matrizFila], LOW);
+  digitalWrite(MATRIZ_LED[0][matrizColumna], HIGH);
+  arrayLedsEncendidos[matrizFila][matrizColumna] = 1;
 
 }
+
 //Bandera temporal
 void selectorGeneral(){
   if(userInput){
-    // Revisar que no este haciendo cagada con el AND y borrando todo el registro
     TIMSK1 &= ~(1 << OCIE1A);  // Output compare Timer1 A Interrupt Disable 
     userInput = 0; 
   }
@@ -118,11 +121,12 @@ void selectorGeneral(){
 }
 
 void selectorVelMouse(){
-
-
+  
 }
 
 void selectorVelDisplay(){
   
+
+  
 }
-//------------------------------------------------------------------Funciones
+//---------------------------------------------------------------- Funciones
