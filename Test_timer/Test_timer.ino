@@ -1,18 +1,20 @@
-const int LED = 3,
+const int LED = A0,
           PULSADOR_VEL_DISPLAY = 2;
 bool encenderLed = 0;
 
 const int TIMER1_INTERRUPTS[6][4] = {{31250, 1, 0, 0},
                                      {65000, 1, 0, 0},
                                      {3125,  1, 0, 1},
-                                     {4688,  1, 0, 1},
-                                     {6250,  1, 0, 1},
-                                     {7813,  1, 0, 1},};
+                                     {4688,  1, 0, 1}};
+//                                     {6250,  1, 0, 1},
+//                                     {7813,  1, 0, 1},};
 int timer1InterruptIndex = 1;
           
 void setup() {
   Serial.begin(9600);
   pinMode(LED, OUTPUT);
+  pinMode(16, OUTPUT);
+  digitalWrite(16, LOW);
   
   noInterrupts();
   // Clock de 16MHz
@@ -52,7 +54,7 @@ ISR(TIMER1_COMPA_vect){
 
 // Parecería andar, hay que probar con el Pro Micro
 void selectorVelDisplay(){
-    timer1InterruptIndex == 6 ? timer1InterruptIndex = 0 : timer1InterruptIndex++;
+    timer1InterruptIndex == 3? timer1InterruptIndex = 0 : timer1InterruptIndex++;
     noInterrupts();
     OCR1A = TIMER1_INTERRUPTS[timer1InterruptIndex][0];
     TCCR1B &= ~(1 << CS10);
