@@ -1,134 +1,172 @@
+//---------------------------------------------------------------- Pines
+// USB(0,1) PULSADOR_USUARIO(2) PULSADOR_VELOCIDAD(3) BUZZER(5) PULSADOR_CONTROL(6) LED_VEL(9) LED_CONTROL(10) BT(7,8)
+// MATRIZ LEDS(A0, A1, A2, 16, 14, 15) multiplexados
+//---------------------------------------------------------------- Declaraciones
+#include "Mouse.h"
+#include <Keyboard.h>
+const int PULSADOR_USUARIO = 2,
+          PULSADOR_VEL_MOUSE = 3,
+          PULSADOR_VEL_DISPLAY = 6,
+          VCC_LED_1 = A0,
+          VCC_LED_2 = A1,
+          VCC_LED_3 = A2,
+          GND_LED_1 = 16,
+          GND_LED_2 = 14,
+          GND_LED_3 = 15;
 
- //----------------------------------------------------------------Pines
- // USB(0,1) PULSADOR_USUARIO(2) PULSADOR_VELOCIDAD(3) BUZZER(5) PULSADOR_CONTROL(6) LED_VEL(9) LED_CONTROL(10) BT(7,8)
- // MATRIZ LEDS(4,14,15,16,A0,A1,A2,A3)
- int pin1=7, pin2=6, pin3=5, pin4=4, pin5=3, pin6=2; //pin1 pin2 y pin3 leds pin 4 5 6 columnas
-int i=0, j=0;
+const int MATRIZ_LED[2][3] = {{VCC_LED_1, VCC_LED_2, VCC_LED_3},
+  {GND_LED_1, GND_LED_2, GND_LED_3}
+};
 
-//------------------------------------------------------------------Librerías
-
-//------------------------------------------------------------------Declaraciones
-//CREAR VARIABLE ESTADO(en que momento de la secuencia estoy parado
+bool arrayLedsEncendidos[3][3] = {{0, 0, 0},
+  {0, 0, 0},
+  {0, 0, 0}
+};
 
 
-//------------------------------------------------------------------setup
-// probando el git
+// Por como tratamos a la matriz, las filas se encuentras a GND y las columnas a VCC, pero se podría cambiar
+int matrizFila = 0, matrizColumna = 0, ledEncendido = 0, Modo = 1;
+bool userInput = 1;
+
+//---------------------------------------------------------------- Setup
 void setup() {
   Serial.begin(9600);
-  pinMode(pin1, OUTPUT);
-  pinMode(pin2, OUTPUT);
-  pinMode(pin3, OUTPUT);
-  pinMode(pin4, OUTPUT);
-  pinMode(pin5, OUTPUT);
-  pinMode(pin6, OUTPUT);
+  Keyboard.begin();
+  pinMode(VCC_LED_1, OUTPUT);
+  pinMode(VCC_LED_2, OUTPUT);
+  pinMode(VCC_LED_3, OUTPUT);
+  pinMode(GND_LED_1, OUTPUT);
+  pinMode(GND_LED_2, OUTPUT);
+  pinMode(GND_LED_3, OUTPUT);
   noInterrupts();
   TCCR1A = 0;
   TCCR1B = 0;
   TCNT1 = 0;
-  OCR1A =65000;
-  TCCR1B |= (1 << WGM12); //CTC
-  TCCR1B |= (1 << CS12); 
-   //prescaler
-  TIMSK1 |= (1 << OCIE1A);
+  OCR1A = 65000;
+  TCCR1B |= (1 << WGM12);   //CTC
+  TCCR1B |= (1 << CS12);    // Prescaler 256
+  TIMSK1 |= (1 << OCIE1A);  // Output compare Timer1 A Interrupt Enable
+
+  // Interrupciones de pulsador por rising edge
+  attachInterrupt(digitalPinToInterrupt(PULSADOR_USUARIO), selectorGeneral, RISING);
+  attachInterrupt(digitalPinToInterrupt(PULSADOR_VEL_MOUSE), selectorVelMouse, RISING);
+  attachInterrupt(digitalPinToInterrupt(PULSADOR_VEL_DISPLAY), selectorVelDisplay, RISING);
   interrupts();
-//Entradas salidas
-//USB
-//BT
-//Timers
-//Valores iniciales
-
+  //Entradas salidas
+  //USB
+  //BT
+  //Timers
+  //Valores iniciales
+  digitalWrite(GND_LED_1, HIGH);
+  digitalWrite(GND_LED_2, HIGH);
+  digitalWrite(GND_LED_3, HIGH);
 }
 
 
-//------------------------------------------------------------------Loop
+//---------------------------------------------------------------- Loop
 void loop() {
-  
+  estado(); //ve cuál led está prendido
+  //LEER SI CAMBIO VALOR DE MODO VERDADERO-->mouse_control();
 
-//Recepcion BT por RX
-
-
-//Función Mouse
-//Función COntrol
-
-/*switch (Modo){
-  case 1:
-  //Mouse a 1 capas
-  break;
-  case 2:
-  //Mouse 2 capa
-  break;
-  
-  case 3:
-  //PIctogramas por grupo
-  break;
-  
-  case 4:
-  //pictograma por unidad
-  break;
-  case 5:
-  //POSIBLE 5TO MODO DE CONFIGURACIÓN
-  break;}*/
-
+  //Recepcion BT por RX
+  //Función Mouse
 
 }
 
 
-//------------------------------------------------------------------ISR
-ISR(TIMER1_COMPA_vect){
-  if(i==0){
-    digitalWrite(pin4, LOW);
-    digitalWrite(pin5, HIGH);
-    digitalWrite(pin6, HIGH);
-    switch (j){
-      case 0:
-      digitalWrite(pin3,LOW);
-      digitalWrite(pin1,HIGH);
-      j++;
+
+//---------------------------------------------------------------- ISR
+ISR(TIMER1_COMPA_vect) {
+  switch (Modo) {
+    case 1:
+      MODO1();
       break;
-      case 1:
-      digitalWrite(pin1,LOW);
-      digitalWrite(pin2,HIGH);
-      j++;
-      break;
-      case 2:
-      digitalWrite(pin2,LOW);
-      digitalWrite(pin3,HIGH);
-      j=0;
-      i++;
-      break;
-      }
-      
-  }
-  else
-    {
-    digitalWrite(pin4, HIGH);
-    digitalWrite(pin5, LOW);
-    digitalWrite(pin6, HIGH);
-    switch (j){
-      case 0:
-      digitalWrite(pin3,LOW);
-      digitalWrite(pin1,HIGH);
-      j++;
-      break;
-      case 1:
-      digitalWrite(pin1,LOW);
-      digitalWrite(pin2,HIGH);
-      j++;
-      break;
-      case 2:
-      digitalWrite(pin2,LOW);
-      digitalWrite(pin3,HIGH);
-      j=0;
-      i=0;
-      break;
-      }
-     
+      /*case 2:
+        MODO2();
+        break;
+        case 3:
+        MODO3();
+        break;*/
   }
 
 }
 //Bandera temporal
+void selectorGeneral() {
+  if (userInput) {
+    TIMSK1 &= ~(1 << OCIE1A);  // Output compare Timer1 A Interrupt Disable
+    userInput = 0;
+  }
+  else {
+    TIMSK1 |= (1 << OCIE1A);  // Output compare Timer1 A Interrupt Enable
+    userInput = 1;
+  }
+}
+
+void selectorVelMouse() {
+
+}
+
+void selectorVelDisplay() {
+
+}
+//---------------------------------------------------------------- Funciones
+void estado() {
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; i < 3; j++) {
+      if (digitalRead(arrayLedsEncendidos[i][j] == HIGH))
+        ledEncendido = (i * 3 + j);
+    }
+  }
+}
+void mouse_control() {
+ switch (ledEncendido) {
+    case 0:
+      Keyboard.press(KEY_ESC); //tecla escape posible necesidad de pequeña espera
+      Keyboard.release(KEY_ESC);
+      break;
+    case 1:
+      Mouse.move(0, (10 * vel), 0); //flecha arriba    10=range varias experimentalmente
+      break;
+    case 2:
+      velocidad = velocidad * k;
+      k++;
+      if (k == 3)   //Usar flag para que varíe única vez
+        k = 1;        //velocidad
+      break;
+    case 3:
+      Mouse.move(-(10 * vel), 0, 0); //flecha izquierda
+      break;
+    case 4:
+      Modo++;
+      break;
+    case 5:
+      Mouse.move((10 * vel), 0, 0); //flecha derecha
+      break;
+    case 6:
+      Mouse.click(MOUSE_LEFT);
+      break;
+    case 7:
+      Mouse.move(0, -(10 * vel), 0); //flecha abajo
+      break;
+    case 8:
+      Mouse.click(MOUSE_RIGHT); //click derecho
+      break;
+
+  }
 
 
+}
 
-
-//------------------------------------------------------------------Funciones
+void MODO1() {                        //esto prende las lucecitas de una forma
+  digitalWrite(MATRIZ_LED[1][matrizFila], HIGH);
+  digitalWrite(MATRIZ_LED[0][matrizColumna], LOW);
+  arrayLedsEncendidos[matrizFila][matrizColumna] = 0;
+  matrizColumna++;
+  if (matrizColumna > 2) {
+    matrizColumna = 0;
+    matrizFila == 2 ? matrizFila = 0 : matrizFila++;
+  }
+  digitalWrite(MATRIZ_LED[1][matrizFila], LOW);
+  digitalWrite(MATRIZ_LED[0][matrizColumna], HIGH);
+  arrayLedsEncendidos[matrizFila][matrizColumna] = 1;
+}
