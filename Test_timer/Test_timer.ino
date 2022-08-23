@@ -4,8 +4,8 @@ bool encenderLed = 0;
 
 const int TIMER1_INTERRUPTS[6][4] = {{31250, 1, 0, 0},
                                      {65000, 1, 0, 0},
-                                     {3125,  1, 0, 1},
-                                     {4688,  1, 0, 1}};
+                                     {31250,  1, 0, 1}};
+//                                     {4688,  1, 0, 1},
 //                                     {6250,  1, 0, 1},
 //                                     {7813,  1, 0, 1},};
 int timer1InterruptIndex = 1;
@@ -48,14 +48,20 @@ void loop() {
 
 //---------------------------------------------------------------- ISR
 ISR(TIMER1_COMPA_vect){
+  Serial.print("TCCR1B: ");
+  Serial.print(TCCR1B);
+  Serial.print(" OCR1A:");
+  Serial.println(OCR1A);
   encenderLed = !encenderLed;
   digitalWrite(LED, encenderLed);
 }
 
 // Parecería andar, hay que probar con el Pro Micro
 void selectorVelDisplay(){
-    timer1InterruptIndex == 3? timer1InterruptIndex = 0 : timer1InterruptIndex++;
     noInterrupts();
+    timer1InterruptIndex == 2? timer1InterruptIndex = 0 : timer1InterruptIndex++;
+    Serial.print("Index: ");
+    Serial.println(timer1InterruptIndex);
     OCR1A = TIMER1_INTERRUPTS[timer1InterruptIndex][0];
     TCCR1B &= ~(1 << CS10);
     TCCR1B |= (TIMER1_INTERRUPTS[timer1InterruptIndex][3] << CS10);    

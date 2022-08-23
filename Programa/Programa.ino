@@ -6,8 +6,8 @@
 
 //---------------------------------------------------------------- Declaraciones
 const int PULSADOR_USUARIO = 2,
-          PULSADOR_VEL_MOUSE = 3,
-          PULSADOR_VEL_DISPLAY = 6, 
+          PULSADOR_VEL_MOUSE = 6,
+          PULSADOR_VEL_DISPLAY = 3, 
           VCC_LED_1 = A0, 
           VCC_LED_2 = A1, 
           VCC_LED_3 = A2, 
@@ -25,6 +25,14 @@ bool arrayLedsEncendidos[3][3] = {{0, 0, 0},
 // Por como tratamos a la matriz, las filas se encuentras a GND y las columnas a VCC, pero se podría cambiar
 int matrizFila = 0, matrizColumna = 0; 
 bool userInput = 1;
+
+const int TIMER1_INTERRUPTS[6][4] = {{31250, 1, 0, 0},
+                                     {65000, 1, 0, 0},
+                                     {31250,  1, 0, 1}};
+//                                     {4688,  1, 0, 1},
+//                                     {6250,  1, 0, 1},
+//                                     {7813,  1, 0, 1},};
+int timer1InterruptIndex = 1;
 
 //---------------------------------------------------------------- Setup
 void setup() {
@@ -46,7 +54,7 @@ void setup() {
 
   // Interrupciones de pulsador por rising edge
   attachInterrupt(digitalPinToInterrupt(PULSADOR_USUARIO), selectorGeneral, RISING);
-  attachInterrupt(digitalPinToInterrupt(PULSADOR_VEL_MOUSE), selectorVelMouse, RISING);
+//  attachInterrupt(digitalPinToInterrupt(PULSADOR_VEL_MOUSE), selectorVelMouse, RISING);
   attachInterrupt(digitalPinToInterrupt(PULSADOR_VEL_DISPLAY), selectorVelDisplay, RISING);
   interrupts();
   //Entradas salidas
@@ -110,6 +118,7 @@ ISR(TIMER1_COMPA_vect){
 
 //Bandera temporal
 void selectorGeneral(){
+  Serial.println("Pulsador de usuario");
   if(userInput){
     TIMSK1 &= ~(1 << OCIE1A);  // Output compare Timer1 A Interrupt Disable 
     userInput = 0; 
@@ -125,8 +134,14 @@ void selectorVelMouse(){
 }
 
 void selectorVelDisplay(){
-  
-
-  
+    Serial.println("Velocidad de display");
+    noInterrupts();
+    timer1InterruptIndex == 2? timer1InterruptIndex = 0 : timer1InterruptIndex++;
+    Serial.print("Index: ");
+    Serial.println(timer1InterruptIndex);
+    OCR1A = TIMER1_INTERRUPTS[timer1InterruptIndex][0];
+    TCCR1B &= ~(1 << CS10);
+    TCCR1B |= (TIMER1_INTERRUPTS[timer1InterruptIndex][3] << CS10);    
+    interrupts();  
 }
 //---------------------------------------------------------------- Funciones
