@@ -28,6 +28,9 @@ bool arrayLedsEncendidos[3][3] = {{0, 0, 0},
 int matrizFila = 0, matrizColumna = 0; 
 bool userInput = 0;
 
+const int timeThreshold = 200;
+long startTimePulsador = 0;
+
 // Calculo OCR = t * (f / PS)
 // OCR1A, TCCR1B -> CS10
 const int TIMER1_INTERRUPTS[MAX_VEL_LEDS][2] = {{31250, 0},    // 0.5 seg, PS: 256   OCR: 31250 
@@ -115,14 +118,18 @@ ISR(TIMER1_COMPA_vect){
 
 //Bandera temporal
 void selectorGeneral(){
-  Serial.println("Pulsador de usuario");
-  if(!userInput){
-    TIMSK1 &= ~(1 << OCIE1A);  // Output compare Timer1 A Interrupt Disable 
-    userInput = !userInput; 
-  }
-  else{
-    TIMSK1 |= (1 << OCIE1A);  // Output compare Timer1 A Interrupt Enable
-    userInput = !userInput;
+  if(millis() - startTimePulsador > timeThreshold){
+    startTimePulsador = millis();
+    TCNT1 = 0; // Se limpia el contador del timer 1 
+    Serial.println("Pulsador de usuario");
+    if(!userInput){
+      TIMSK1 &= ~(1 << OCIE1A);  // Output compare Timer1 A Interrupt Disable 
+      userInput = !userInput; 
+    }
+    else{
+      TIMSK1 |= (1 << OCIE1A);  // Output compare Timer1 A Interrupt Enable
+      userInput = !userInput;
+    }
   }
 }
 

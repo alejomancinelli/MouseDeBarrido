@@ -1,8 +1,4 @@
 - Ver de separar el código en distintos archivos (timer, pulsador, mouse, etc)
 - Limpiar los Serial.print
-- Agregar timer en pulsador para evitar falsos positivos por rebote
-    + Se enciende un timer al pulsar y se desactiva la interrupción
-    + Cuando termina se vuelve a activar la interrupción
-    + Probar con el timer 2? Porque al timer 1 se le cambia el PS y puede haber quilombo
 - Agregar el PWM para mostrar la velocidad de los leds. Capaz es medio al pedo pero bueno, 
 después lo vemos, es copiar el código nomás
