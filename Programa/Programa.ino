@@ -5,6 +5,8 @@
 //---------------------------------------------------------------- Librerías
 
 //---------------------------------------------------------------- Declaraciones
+#define MAX_VEL_LEDS 3
+
 const int PULSADOR_USUARIO = 2,
           PULSADOR_VEL_MOUSE = 6,
           PULSADOR_VEL_DISPLAY = 3, 
@@ -24,19 +26,19 @@ bool arrayLedsEncendidos[3][3] = {{0, 0, 0},
 
 // Por como tratamos a la matriz, las filas se encuentras a GND y las columnas a VCC, pero se podría cambiar
 int matrizFila = 0, matrizColumna = 0; 
-bool userInput = 1;
+bool userInput = 0;
 
-const int TIMER1_INTERRUPTS[6][4] = {{31250, 1, 0, 0},
-                                     {65000, 1, 0, 0},
-                                     {31250,  1, 0, 1}};
-//                                     {4688,  1, 0, 1},
-//                                     {6250,  1, 0, 1},
-//                                     {7813,  1, 0, 1},};
+// Calculo OCR = t * (f / PS)
+// OCR1A, TCCR1B -> CS10
+const int TIMER1_INTERRUPTS[MAX_VEL_LEDS][2] = {{31250, 0},    // 0.5 seg, PS: 256   OCR: 31250 
+                                                {65000, 0},    // 1 seg,   PS: 256   OCR: 65000 
+                                                {31250, 1}};   // 2 seg,   PS: 1024  OCR: 31250 
 int timer1InterruptIndex = 1;
 
 //---------------------------------------------------------------- Setup
 void setup() {
   Serial.begin(9600);
+  //Entradas salidas
   pinMode(VCC_LED_1, OUTPUT);
   pinMode(VCC_LED_2, OUTPUT);
   pinMode(VCC_LED_3, OUTPUT);
@@ -44,6 +46,7 @@ void setup() {
   pinMode(GND_LED_2, OUTPUT);
   pinMode(GND_LED_3, OUTPUT);
   noInterrupts();
+  //Timers
   TCCR1A = 0;
   TCCR1B = 0;
   TCNT1 = 0;
@@ -51,16 +54,13 @@ void setup() {
   TCCR1B |= (1 << WGM12);   //CTC
   TCCR1B |= (1 << CS12);    // Prescaler 256
   TIMSK1 |= (1 << OCIE1A);  // Output compare Timer1 A Interrupt Enable
-
   // Interrupciones de pulsador por rising edge
   attachInterrupt(digitalPinToInterrupt(PULSADOR_USUARIO), selectorGeneral, RISING);
-//  attachInterrupt(digitalPinToInterrupt(PULSADOR_VEL_MOUSE), selectorVelMouse, RISING);
+  attachInterrupt(digitalPinToInterrupt(PULSADOR_VEL_MOUSE), selectorVelMouse, RISING);
   attachInterrupt(digitalPinToInterrupt(PULSADOR_VEL_DISPLAY), selectorVelDisplay, RISING);
   interrupts();
-  //Entradas salidas
   //USB
   //BT
-  //Timers
   //Valores iniciales
   digitalWrite(GND_LED_1, HIGH);
   digitalWrite(GND_LED_2, HIGH);
@@ -70,9 +70,7 @@ void setup() {
 
 //---------------------------------------------------------------- Loop
 void loop() {
-  
-
-  //Recepcion BT por RX
+//Recepcion BT por RX
 //Función Mouse
 //Función COntrol
 //  switch (Modo){
@@ -113,19 +111,18 @@ ISR(TIMER1_COMPA_vect){
   digitalWrite(MATRIZ_LED[1][matrizFila], LOW);
   digitalWrite(MATRIZ_LED[0][matrizColumna], HIGH);
   arrayLedsEncendidos[matrizFila][matrizColumna] = 1;
-
 }
 
 //Bandera temporal
 void selectorGeneral(){
   Serial.println("Pulsador de usuario");
-  if(userInput){
+  if(!userInput){
     TIMSK1 &= ~(1 << OCIE1A);  // Output compare Timer1 A Interrupt Disable 
-    userInput = 0; 
+    userInput = !userInput; 
   }
   else{
     TIMSK1 |= (1 << OCIE1A);  // Output compare Timer1 A Interrupt Enable
-    userInput = 1;
+    userInput = !userInput;
   }
 }
 
@@ -136,7 +133,7 @@ void selectorVelMouse(){
 void selectorVelDisplay(){
     Serial.println("Velocidad de display");
     noInterrupts();
-    timer1InterruptIndex == 2? timer1InterruptIndex = 0 : timer1InterruptIndex++;
+    timer1InterruptIndex == MAX_VEL_LEDS - 1 ? timer1InterruptIndex = 0 : timer1InterruptIndex++;
     Serial.print("Index: ");
     Serial.println(timer1InterruptIndex);
     OCR1A = TIMER1_INTERRUPTS[timer1InterruptIndex][0];
