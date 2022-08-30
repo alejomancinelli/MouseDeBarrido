@@ -1,4 +1,0 @@
-- Ver de separar el código en distintos archivos (timer, pulsador, mouse, etc)
-- Limpiar los Serial.print
-- Agregar el PWM para mostrar la velocidad de los leds. Capaz es medio al pedo pero bueno, 
-después lo vemos, es copiar el código nomás
