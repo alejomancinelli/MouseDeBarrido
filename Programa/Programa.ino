@@ -9,19 +9,20 @@ SoftwareSerial BT(7, 8);
 #include <Keyboard.h>
 
 //---------------------------------------------------------------- Declaraciones
+#define MAX_VEL_LEDS 3
+
 const int PULSADOR_USUARIO = 2,
           PULSADOR_VEL_MOUSE = 6,
-          PULSADOR_VEL_DISPLAY = 3,
-          VCC_LED_1 = A0,
-          VCC_LED_2 = A1,
-          VCC_LED_3 = A2,
-          GND_LED_1 = 16,
-          GND_LED_2 = 14,
-          GND_LED_3 = 15;
-
-const int MATRIZ_LED[2][3] = {{VCC_LED_1, VCC_LED_2, VCC_LED_3},
-  {GND_LED_1, GND_LED_2, GND_LED_3}
-};
+          PULSADOR_VEL_DISPLAY = 3, 
+          VCC_LED_1 = A0, 
+          VCC_LED_2 = A1, 
+          VCC_LED_3 = A2, 
+          GND_LED_1 = 16, 
+          GND_LED_2 = 14, 
+          GND_LED_3 = 15; 
+          
+const int MATRIZ_LED[2][3] = {{VCC_LED_1, VCC_LED_2, VCC_LED_3}, 
+                              {GND_LED_1, GND_LED_2, GND_LED_3}};
 
 bool arrayLedsEncendidos[3][3] = {{0, 0, 0},
   {0, 0, 0},
@@ -29,21 +30,22 @@ bool arrayLedsEncendidos[3][3] = {{0, 0, 0},
 };
 
 // Por como tratamos a la matriz, las filas se encuentras a GND y las columnas a VCC, pero se podría cambiar
-int matrizFila = 0, matrizColumna = 0;
+int matrizFila = 0, matrizColumna = 0; 
 bool userInput = 0;
 
-const int TIMER1_INTERRUPTS[6][4] = {{31250, 1, 0, 0},
-  {65000, 1, 0, 0},
-  {31250,  1, 0, 1}
-};
-//                                     {4688,  1, 0, 1},
-//                                     {6250,  1, 0, 1},
-//                                     {7813,  1, 0, 1},};
+const int timeThreshold = 200;
+long startTimePulsador = 0;
+
+// Calculo OCR = t * (f / PS)
+// OCR1A, TCCR1B -> CS10
+const int TIMER1_INTERRUPTS[MAX_VEL_LEDS][2] = {{31250, 0},    // 0.5 seg, PS: 256   OCR: 31250 
+                                                {65000, 0},    // 1 seg,   PS: 256   OCR: 65000 
+                                                {31250, 1}};   // 2 seg,   PS: 1024  OCR: 31250 
 int timer1InterruptIndex = 1;
 
+bool interruptFlagTimer3 = 0;
+
 int  modo = 1, vel_mouse = 1, range = 5, mov = range * vel_mouse, comando; //comando almacena datos bluetooth
-
-
 
 //---------------------------------------------------------------- Setup
 void setup() {
@@ -57,23 +59,16 @@ void setup() {
   pinMode(GND_LED_2, OUTPUT);
   pinMode(GND_LED_3, OUTPUT);
   noInterrupts();
-  TCCR1A = 0;
-  TCCR1B = 0;
-  TCNT1 = 0;
-  OCR1A = 65000;
-  TCCR1B |= (1 << WGM12);   //CTC
-  TCCR1B |= (1 << CS12);    // Prescaler 256
-  TIMSK1 |= (1 << OCIE1A);  // Output compare Timer1 A Interrupt Enable
-
+  //Timers
+  setupTimer1();
+  setupTimer3();
   // Interrupciones de pulsador por rising edge
   attachInterrupt(digitalPinToInterrupt(PULSADOR_USUARIO), selectorGeneral, RISING);
   //  attachInterrupt(digitalPinToInterrupt(PULSADOR_VEL_MOUSE), selectorVelMouse, RISING);
   attachInterrupt(digitalPinToInterrupt(PULSADOR_VEL_DISPLAY), selectorVelDisplay, RISING);
   interrupts();
-  //Entradas salidas
   //USB
   //BT
-  //Timers
   //Valores iniciales
   digitalWrite(GND_LED_1, HIGH);
   digitalWrite(GND_LED_2, HIGH);
@@ -90,31 +85,8 @@ void loop() {
 
   //Recepcion BT por RX
   //Función Mouse
-  //Función COntrol
-  //  switch (Modo){
-  //    case 1:
-  //    //Mouse a 1 capas
-  //      break;
-  //    case 2:
-  //    //Mouse 2 capa
-  //      break;
-  //
-  //    case 3:
-  //    //PIctogramas por grupo
-  //      break;
-  //
-  //    case 4:
-  //    //pictograma por unidad
-  //      break;
-  //    case 5:
-  //    //POSIBLE 5TO MODO DE CONFIGURACIÓN
-  //      break;
-  //    case default:
-  //      break;
-  //  }
 
 }
-
 
 //---------------------------------------------------------------- ISR
 ISR(TIMER1_COMPA_vect) {
@@ -131,17 +103,27 @@ ISR(TIMER1_COMPA_vect) {
   }
 }
 
+ISR(TIMER3_COMPA_vect) {
+  Serial.println("Timer 3 interrupt");
+  interruptFlagTimer3 = 1;
+}
+
 //Bandera temporal
-void selectorGeneral() {
-  Serial.println("Pulsador de usuario");
-  if (!userInput) {
-    TIMSK1 &= ~(1 << OCIE1A);  // Output compare Timer1 A Interrupt Disable
-    userInput = 1;
-    estado();
-  }
-  else {
-    TIMSK1 |= (1 << OCIE1A);  // Output compare Timer1 A Interrupt Enable
-    userInput = 0;
+void selectorGeneral(){
+  if(millis() - startTimePulsador > timeThreshold){
+    startTimePulsador = millis();
+    TCNT1 = 0; // Se limpia el contador del timer 1 
+    Serial.println("Pulsador de usuario");
+    if(!userInput){
+      TIMSK1 &= ~(1 << OCIE1A);   // Output compare Timer1 A Interrupt Disable
+      TIMSK3 |= (1 << OCIE3A);    // Output compare Timer3 A Interrupt Enable
+      userInput = !userInput; 
+    }
+    else{
+      TIMSK1 |= (1 << OCIE1A);    // Output compare Timer1 A Interrupt Enable
+      TIMSK3 &= ~(1 << OCIE3A);   // Output compare Timer3 A Interrupt Disable 
+      userInput = !userInput;
+    }
   }
 }
 
@@ -152,6 +134,7 @@ void selectorGeneral() {
   mov= vel_mouse*range;
   }*/
 
+// Este después se borra, se configura por BT
 void selectorVelDisplay() {
   Serial.println("Velocidad de display");
   noInterrupts();
@@ -163,7 +146,105 @@ void selectorVelDisplay() {
   TCCR1B |= (TIMER1_INTERRUPTS[timer1InterruptIndex][3] << CS10);
   interrupts();
 }
+
 //---------------------------------------------------------------- Funciones
+void setupTimer1(){
+  TCCR1A = 0;
+  TCCR1B = 0;
+  TCNT1 = 0;
+  OCR1A = 65000;
+  TCCR1B |= (1 << WGM12);   //CTC
+  TCCR1B |= (1 << CS12);    // Prescaler 256
+  TIMSK1 |= (1 << OCIE1A);  // Output compare Timer1 A Interrupt Enable
+}
+
+void setupTimer3(){
+  // Ajustar para el mov del mouse
+  TCCR3A = 0;
+  TCCR3B = 0;
+  TCNT3 = 0;
+  OCR3A = 6500;
+  TCCR3B |= (1 << WGM32);   //CTC
+  TCCR3B |= (1 << CS32);    // Prescaler 256
+}
+
+
+int estado() {
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      if (arrayLedsEncendidos[i][j]) {
+        return (i * 3 + j);
+      }
+    }
+  }
+  return -1;
+}
+
+void modo1() {
+  digitalWrite(MATRIZ_LED[1][matrizFila], HIGH);
+  digitalWrite(MATRIZ_LED[0][matrizColumna], LOW);
+  arrayLedsEncendidos[matrizFila][matrizColumna] = 0;
+  matrizColumna++;
+  if(matrizColumna > 2){
+    matrizColumna = 0;
+    matrizFila == 2 ? matrizFila = 0 : matrizFila++;
+  }
+  digitalWrite(MATRIZ_LED[1][matrizFila], LOW);
+  digitalWrite(MATRIZ_LED[0][matrizColumna], HIGH);
+  arrayLedsEncendidos[matrizFila][matrizColumna] = 1;
+}
+
+void mouse_control() {
+  switch (estado()) {
+    //    case 0:
+    //      Keyboard.press(KEY_ESC); //tecla escape posible necesidad de pequeña espera
+    //      Keyboard.release(KEY_ESC);
+    //      break;
+    case 1:
+      if(interruptFlagTimer3){
+        interruptFlagTimer3 = 0;
+        Serial.println("Mouse arriba"); //cambiar 20 por mov
+        Mouse.move(0, (-mov), 0); //flecha arriba    10=range varias experimentalmente
+      }
+      break;
+    // case 2:
+
+    // break;
+    case 3:
+    if(interruptFlagTimer3){
+        interruptFlagTimer3 = 0;
+        Serial.println("Mouse izquierda");
+        Mouse.move(-(mov), 0, 0); //flecha izquierda
+      }
+      break;
+    //    case 4:
+    //      modo++;
+    //      break;
+    case 5:
+      if(interruptFlagTimer3){
+        interruptFlagTimer3 = 0;
+        Serial.println("Mouse derecha");
+        Mouse.move((mov), 0, 0); //flecha derecha
+      }
+      break;
+    case 6:
+//      Mouse.click(MOUSE_LEFT);
+      break;
+    case 7:
+      if(interruptFlagTimer3){
+        interruptFlagTimer3 = 0;
+        Serial.println("Mouse abajo");
+        Mouse.move(0, (mov), 0); //flecha abajo
+      }
+      break;
+    case 8:
+//      Mouse.click(MOUSE_RIGHT); //click derecho
+      break;
+    default:
+      break;
+  }
+}
+
 void Bluetooth () { // a=arriba, b=below, d=derecha, i=izquierda, y=click izquierdo, z=click derecho
   if (BT.available() > 0) {    // lee el bluetooth y almacena en serial
     comando = BT.read();
@@ -182,8 +263,8 @@ void Bluetooth () { // a=arriba, b=below, d=derecha, i=izquierda, y=click izquie
         break;
       case 'e':
         Keyboard.press(KEY_ESC); //tecla escape posible necesidad de pequeña espera
-        Keyboard.release(KEY_ESC);
-        break;
+        break;        Keyboard.release(KEY_ESC);
+
       case 'y':
         Mouse.click(MOUSE_LEFT);
         break;
@@ -193,83 +274,5 @@ void Bluetooth () { // a=arriba, b=below, d=derecha, i=izquierda, y=click izquie
 
         //agregar funciones de configuración
     }
-
-  }
-}
-
-int estado() {
-  for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 3; j++) {
-      if (arrayLedsEncendidos[i][j]) {
-        Serial.print("Led pulsado: ");
-        Serial.println((i * 3 + j));
-        return (i * 3 + j);
-      }
-    }
-  }
-  return -1;
-}
-
-void modo1() {
-  digitalWrite(MATRIZ_LED[1][matrizFila], HIGH);
-  digitalWrite(MATRIZ_LED[0][matrizColumna], LOW);
-  arrayLedsEncendidos[matrizFila][matrizColumna] = 0;
-  matrizColumna++;
-  if (matrizColumna > 2) {
-    matrizColumna = 0;
-    matrizFila == 2 ? matrizFila = 0 : matrizFila++;
-  }
-  digitalWrite(MATRIZ_LED[1][matrizFila], LOW);
-  digitalWrite(MATRIZ_LED[0][matrizColumna], HIGH);
-  arrayLedsEncendidos[matrizFila][matrizColumna] = 1;
-  // Test
-  Serial.print(arrayLedsEncendidos[0][0]);
-  Serial.print(arrayLedsEncendidos[0][1]);
-  Serial.print(arrayLedsEncendidos[0][2]);
-  Serial.print(arrayLedsEncendidos[1][0]);
-  Serial.print(arrayLedsEncendidos[1][1]);
-  Serial.print(arrayLedsEncendidos[1][2]);
-  Serial.print(arrayLedsEncendidos[2][0]);
-  Serial.print(arrayLedsEncendidos[2][1]);
-  Serial.print(arrayLedsEncendidos[2][2]);
-  Serial.println();
-}
-
-void mouse_control() {
-  switch (estado()) {
-    //    case 0:
-    //      Keyboard.press(KEY_ESC); //tecla escape posible necesidad de pequeña espera
-    //      Keyboard.release(KEY_ESC);
-    //      break;
-    case 1:
-      Serial.println("Mouse arriba"); //cambiar 20 por mov
-      Mouse.move(0, (mov), 0); //flecha arriba    10=range varias experimentalmente
-      break;
-    // case 2:
-
-    // break;
-    case 3:
-      Serial.println("Mouse izquierda");
-      Mouse.move(-(mov), 0, 0); //flecha izquierda
-      break;
-    //    case 4:
-    //      modo++;
-    //      break;
-    case 5:
-      Serial.println("Mouse derecha");
-      Mouse.move((mov), 0, 0); //flecha derecha
-      break;
-    case 6:
-      Mouse.click(MOUSE_LEFT);
-      break;
-    case 7:
-      Serial.println("Mouse abajo");
-      Mouse.move(0, -(mov), 0); //flecha abajo
-      break;
-    case 8:
-      Mouse.click(MOUSE_RIGHT); //click derecho
-      break;
-    default:
-      break;
   }
 }
