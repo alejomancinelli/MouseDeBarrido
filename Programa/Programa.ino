@@ -5,7 +5,7 @@
 //---------------------------------------------------------------- Librerías
 #include <Mouse.h>
 #include <SoftwareSerial.h>
-SoftwareSerial BT(7, 8);
+SoftwareSerial BT(8, 7);  //RX TX (evaluar pin para rx  tx)
 #include <Keyboard.h>
 
 //---------------------------------------------------------------- Declaraciones
@@ -256,10 +256,10 @@ void Bluetooth () { // a=arriba, b=below, d=derecha, i=izquierda, y=click izquie
     comando = BT.read();
     switch (comando) {
       case 'a':
-        Mouse.move(0, mov, 0);
+        Mouse.move(0, -mov, 0);
         break;
       case 'b':
-        Mouse.move(0, -mov, 0);
+        Mouse.move(0, mov, 0);
         break;
       case 'd':
         Mouse.move(mov, 0, 0);
