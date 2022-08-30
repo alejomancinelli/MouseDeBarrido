@@ -228,7 +228,10 @@ void mouse_control() {
       }
       break;
     case 6:
-//      Mouse.click(MOUSE_LEFT);
+      TIMSK1 |= (1 << OCIE1A);    // Output compare Timer1 A Interrupt Enable
+      TIMSK3 &= ~(1 << OCIE3A);   // Output compare Timer3 A Interrupt Disable 
+      userInput = !userInput;
+      Mouse.click(MOUSE_LEFT);
       break;
     case 7:
       if(interruptFlagTimer3){
@@ -238,7 +241,10 @@ void mouse_control() {
       }
       break;
     case 8:
-//      Mouse.click(MOUSE_RIGHT); //click derecho
+      TIMSK1 |= (1 << OCIE1A);    // Output compare Timer1 A Interrupt Enable
+      TIMSK3 &= ~(1 << OCIE3A);   // Output compare Timer3 A Interrupt Disable 
+      userInput = !userInput;
+      Mouse.click(MOUSE_RIGHT); //click derecho
       break;
     default:
       break;
@@ -263,7 +269,8 @@ void Bluetooth () { // a=arriba, b=below, d=derecha, i=izquierda, y=click izquie
         break;
       case 'e':
         Keyboard.press(KEY_ESC); //tecla escape posible necesidad de pequeña espera
-        break;        Keyboard.release(KEY_ESC);
+        Keyboard.release(KEY_ESC);
+        break;        
 
       case 'y':
         Mouse.click(MOUSE_LEFT);
