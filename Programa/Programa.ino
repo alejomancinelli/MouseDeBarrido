@@ -1,19 +1,19 @@
 //---------------------------------------------------------------- Pines
-// USB(0,1) PULSADOR_USUARIO(2) PULSADOR_VELOCIDAD(3) BUZZER(5) PULSADOR_CONTROL(6) LED_VEL(9) LED_CONTROL(10) BT(7,8)
+// USB(0,1) PULSADOR_USUARIO(2) BUZZER(5) LED_CONTROL(10) BT(7,8)
 // MATRIZ LEDS(A0, A1, A2, 16, 14, 15) multiplexados
 
 //---------------------------------------------------------------- Librerías
 #include <Mouse.h>
+#include <Keyboard.h>
 #include <SoftwareSerial.h>
 SoftwareSerial BT(8, 7);  //RX TX (evaluar pin para rx  tx)
-#include <Keyboard.h>
 
 //---------------------------------------------------------------- Declaraciones
 #define MAX_VEL_LEDS 3
 
 const int PULSADOR_USUARIO = 2,
-          PULSADOR_VEL_MOUSE = 6,
-          PULSADOR_VEL_DISPLAY = 3, 
+          BLUETOOTH_TX = 7,
+          BLUETOOTH_RX = 8,
           VCC_LED_1 = A0, 
           VCC_LED_2 = A1, 
           VCC_LED_3 = A2, 
