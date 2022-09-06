@@ -12,17 +12,17 @@ El Dispositivo cuenta con 9 leds que se encenderan en 3 modos distintos.
 
   - Capa 2: Este Modo enciende Leds en la secuencia 7,9,1,3,5 (Posición en Referencia a Teclado Numerico de PC)
   
-  En Ambos modos se tienen las siguientes funciones:
+En Ambos modos se tienen las siguientes funciones:
 
-        7 - Caracter de Escape
-        8 - Mouse arriba
-        9 - Arrastre
-        4 - Mouse izquierda
-        5 -
-        6 - Mouse derecha
-        1 - Click izquierdo
-        2 - Mouse abajo
-        3 - Click derecho
+    7 - Caracter de Escape
+    8 - Mouse arriba
+    9 - Arrastre
+    4 - Mouse izquierda
+    5 -
+    6 - Mouse derecha
+    1 - Click izquierdo
+    2 - Mouse abajo
+    3 - Click derecho
 
 - **Modo 3**: Selección de Pictogramas
 
@@ -33,22 +33,22 @@ Conexiones y Pin Out:
 
         Pin | Port map  | Características   | Función                   | Descripción
         --- | --------- | ----------------- | ------------------------- | --------------------------
-        0	| PD3	    |  Rx, INT3	        | USB	                    |
-        1	| PD2	    |  Tx, INT2		    | USB                       |
-        2	| PD1	    |  INT1	            | Pulsador user	            | Pulsador grande selección
-        3	| PD0	    |  INT0	            | Pulsador modos	        | Pulsador cambio de modos
-        4	| PD4	    |                   | LED MODO 1	            | Indicación modo MOUSE
-        5	| PC6	    |  PWM	            | LED MODO 2	            | Indicación modo PICTO
-        6	| PD7	    |                   | Pulsador Velocidad Luces  |
-        7	| PE6	    |  Rx, INT6	        | Bluetooth	                |
-        8	| PB4	    |  Tx	            | Bluetooth	                |
-        9	| PB5	    |  PWM	            | Buzzer	                |
-        10	| PB6	    |  PWM		        | Pulsador Velocidad Mouse  | 
-        16	| PB2		| LEDMatrix_Row1	|                           |
-        14	| PB3		| LEDMatrix_Row2    |                           |
-        15	| PB1		| LEDMatrix_Row3	|                           |
-        A0	| PF7		| LEDMatrix_Col1	|                           |
-        A1	| PF6		| LEDMatrix_Col2    |                           |
-        A2	| PF5		| LEDMatrix_Col3	|                           |
-        A3	| PF4		| 	                |                           |
+        0	| PD3       | Rx, INT3          | USB                       | 
+        1	| PD2       | Tx, INT2          | USB                       | 
+        2	| PD1       | INT1              | Pulsador user             | Pulsador grande selección
+        3	| PD0       | INT0              | Pulsador modos            | Pulsador cambio de modos
+        4	| PD4       |                   | LED MODO 1                | Indicación modo MOUSE
+        5	| PC6       | PWM	            | LED MODO 2                | Indicación modo PICTO
+        6	| PD7       |                   | Pulsador Velocidad Luces  | 
+        7	| PE6       | Rx, INT6          | Bluetooth                 | 
+        8	| PB4       | Tx                | Bluetooth                 | 
+        9	| PB5       | PWM               | Buzzer                    | 
+        10	| PB6       | PWM               | Pulsador Velocidad Mouse  |  
+        16	| PB2       | LEDMatrix_Row1    |                           | 
+        14	| PB3       | LEDMatrix_Row2    |                           | 
+        15	| PB1       | LEDMatrix_Row3    |                           | 
+        A0	| PF7       | LEDMatrix_Col1    |                           | 
+        A1	| PF6       | LEDMatrix_Col2    |                           | 
+        A2	| PF5       | LEDMatrix_Col3    |                           | 
+        A3	| PF4       |                   |                           | 
 
