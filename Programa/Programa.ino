@@ -37,20 +37,10 @@ bool arrayLedsEncendidos[3][3] = {{0, 0, 0},
                                   {0, 0, 0},
                                   {0, 0, 0}};
 
-const int SECUENCIA_MODO_3[2][5][2] = { { {LEDMATRIX_COL_2, LEDMATRIX_ROW_1},
-                                          {LEDMATRIX_COL_1, LEDMATRIX_ROW_2},
-                                          {LEDMATRIX_COL_3, LEDMATRIX_ROW_2},
-                                          {LEDMATRIX_COL_2, LEDMATRIX_ROW_3},
-                                          {LEDMATRIX_COL_2, LEDMATRIX_ROW_2}},
-                                        { {LEDMATRIX_COL_1, LEDMATRIX_ROW_1},
-                                          {LEDMATRIX_COL_3, LEDMATRIX_ROW_1},
-                                          {LEDMATRIX_COL_1, LEDMATRIX_ROW_3},
-                                          {LEDMATRIX_COL_3, LEDMATRIX_ROW_3},
-                                          {LEDMATRIX_COL_2, LEDMATRIX_ROW_2}}};
-const int SECUENCIA_LEDS_MODO_3[2][5][2] = {{{1,0},{0,1},{2,1},{1,2},{1,1}},
-                                            {{0,0},{2,0},{0,2},{2,2},{1,1}}};
-int indexSecuenciaModo3 = 0;
-bool capa = 0;
+const int SECUENCIA_MODO_2[2][5][2] = { {{1,0},{0,1},{2,1},{1,2},{1,1}},
+                                        {{0,0},{2,0},{0,2},{2,2},{1,1}}};
+int indexSecuenciaModo2 = 0;
+bool capaModo2 = 0;
 
 // Por como tratamos a la matriz, las filas se encuentras a GND y las columnas a VCC, pero se podría cambiar
 int matrizFila = 0, matrizColumna = 0; 
@@ -248,12 +238,12 @@ void configuracionModo(){
       break; 
     
     case 2:
-      capa = 0;
+      capaModo2 = 0;
       digitalWrite(LED_MODO_1, HIGH);
       digitalWrite(LED_MODO_2, HIGH);
-      indexSecuenciaModo3 = 0;
-      digitalWrite(SECUENCIA_MODO_3[indexSecuenciaModo3][0], HIGH); 
-      digitalWrite(SECUENCIA_MODO_3[indexSecuenciaModo3][1], LOW); 
+      indexSecuenciaModo2 = 0;
+      digitalWrite(MATRIZ_LED[0][SECUENCIA_MODO_2[capaModo2][indexSecuenciaModo2][0]], HIGH);
+      digitalWrite(MATRIZ_LED[1][SECUENCIA_MODO_2[capaModo2][indexSecuenciaModo2][1]], LOW);
       break;
 
     case 3:
@@ -323,13 +313,13 @@ void secuenciaLedPorColumna(){
 }
 
 void secuenciaLedPorCapas(){
-  digitalWrite(MATRIZ_LED[0][SECUENCIA_LEDS_MODO_3[capa][indexSecuenciaModo3][0]], LOW);
-  digitalWrite(MATRIZ_LED[1][SECUENCIA_LEDS_MODO_3[capa][indexSecuenciaModo3][1]], HIGH);
-  arrayLedsEncendidos[SECUENCIA_LEDS_MODO_3[capa][indexSecuenciaModo3][1]][SECUENCIA_LEDS_MODO_3[capa][indexSecuenciaModo3][0]] = 0;
-  indexSecuenciaModo3 == 4 ? indexSecuenciaModo3 = 0 : indexSecuenciaModo3++;
-  digitalWrite(MATRIZ_LED[0][SECUENCIA_LEDS_MODO_3[capa][indexSecuenciaModo3][0]], HIGH);
-  digitalWrite(MATRIZ_LED[1][SECUENCIA_LEDS_MODO_3[capa][indexSecuenciaModo3][1]], LOW);
-  arrayLedsEncendidos[SECUENCIA_LEDS_MODO_3[capa][indexSecuenciaModo3][1]][SECUENCIA_LEDS_MODO_3[capa][indexSecuenciaModo3][0]] = 1;
+  digitalWrite(MATRIZ_LED[0][SECUENCIA_MODO_2[capaModo2][indexSecuenciaModo2][0]], LOW);
+  digitalWrite(MATRIZ_LED[1][SECUENCIA_MODO_2[capaModo2][indexSecuenciaModo2][1]], HIGH);
+  arrayLedsEncendidos[SECUENCIA_MODO_2[capaModo2][indexSecuenciaModo2][1]][SECUENCIA_MODO_2[capaModo2][indexSecuenciaModo2][0]] = 0;
+  indexSecuenciaModo2 == 4 ? indexSecuenciaModo2 = 0 : indexSecuenciaModo2++;
+  digitalWrite(MATRIZ_LED[0][SECUENCIA_MODO_2[capaModo2][indexSecuenciaModo2][0]], HIGH);
+  digitalWrite(MATRIZ_LED[1][SECUENCIA_MODO_2[capaModo2][indexSecuenciaModo2][1]], LOW);
+  arrayLedsEncendidos[SECUENCIA_MODO_2[capaModo2][indexSecuenciaModo2][1]][SECUENCIA_MODO_2[capaModo2][indexSecuenciaModo2][0]] = 1;
 }
 
 void mouse_control() {
@@ -357,7 +347,7 @@ void mouse_control() {
       break;
     case 5:
       if(modo == 2)
-        capa = !capa;
+        capaModo2 = !capaModo2;
       TIMSK1 |= (1 << OCIE1A);    // Output compare Timer1 A Interrupt Enable
       TIMSK3 &= ~(1 << OCIE3A);   // Output compare Timer3 A Interrupt Disable 
       userInput = !userInput;
