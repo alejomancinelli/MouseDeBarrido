@@ -2,15 +2,16 @@
 
 El Dispositivo cuenta con 9 leds que se encenderan en 3 modos distintos.
 
+![Referencias matriz led](../MouseDeBarrido/Imagenes/matrizLed.jpg)
+
 - **Modo 1**: Mouse de barrido de una capa
     
-    Este Modo enciende Leds en la secuencia 7,8,9,4,6,1,2,3, (Posición en Referencia a Teclado Numerico de PC) 
+    Este Modo enciende Leds en la secuencia 7,8,9,4,6,1,2,3.
  
 - **Modo 2**: Mouse de barrido de 2 capas
-  - Capa 1: Este Modo enciende Leds en la secuencia 8,4,6,8,5 (Posición en Referencia a Teclado Numerico de PC) 
-                  Activar el 5 pasa a la otra capa. El resto son las flechas.
+  - Capa 1: Este Modo enciende Leds en la secuencia 8,4,6,8,5. Al activar el 5 pasa a la otra capa. El resto son las flechas.
 
-  - Capa 2: Este Modo enciende Leds en la secuencia 7,9,1,3,5 (Posición en Referencia a Teclado Numerico de PC)
+  - Capa 2: Este Modo enciende Leds en la secuencia 7,9,1,3,5
   
 En Ambos modos se tienen las siguientes funciones:
 
