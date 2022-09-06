@@ -38,7 +38,7 @@ Conexiones y Pin Out:
         2	| PD1       | INT1              | Pulsador user             | Pulsador grande selección
         3	| PD0       | INT0              | Pulsador modos            | Pulsador cambio de modos
         4	| PD4       |                   | LED MODO 1                | Indicación modo MOUSE
-        5	| PC6       | PWM	            | LED MODO 2                | Indicación modo PICTO
+        5	| PC6       | PWM               | LED MODO 2                | Indicación modo PICTO
         6	| PD7       |                   | Pulsador Velocidad Luces  | 
         7	| PE6       | Rx, INT6          | Bluetooth                 | 
         8	| PB4       | Tx                | Bluetooth                 | 
