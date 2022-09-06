@@ -44,11 +44,11 @@ En Ambos modos se tienen las siguientes funciones:
         8	| PB4       | Tx                | Bluetooth                 | 
         9	| PB5       | PWM               | Buzzer                    | 
         10	| PB6       | PWM               | Pulsador Velocidad Mouse  |  
-        16	| PB2       | LEDMatrix_Row1    |                           | 
-        14	| PB3       | LEDMatrix_Row2    |                           | 
-        15	| PB1       | LEDMatrix_Row3    |                           | 
-        A0	| PF7       | LEDMatrix_Col1    |                           | 
-        A1	| PF6       | LEDMatrix_Col2    |                           | 
-        A2	| PF5       | LEDMatrix_Col3    |                           | 
+        16	| PB2       | LEDMATRIX_ROW_1   |                           | 
+        14	| PB3       | LEDMATRIX_ROW_2   |                           | 
+        15	| PB1       | LEDMATRIX_ROW_3   |                           | 
+        A0	| PF7       | LEDMATRIX_COL_1   |                           | 
+        A1	| PF6       | LEDMATRIX_COL_2   |                           | 
+        A2	| PF5       | LEDMATRIX_COL_3   |                           | 
         A3	| PF4       |                   |                           | 
 

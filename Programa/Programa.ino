@@ -1,4 +1,4 @@
-//---------------------------------------------------------------- Pines
+  //---------------------------------------------------------------- Pines
 // USB(0,1) PULSADOR_USUARIO(2) PULSADOR_MODO(3) LED_MODO_1(4) LED_MODO_2(5) BUZZER(9) LED_CONTROL(10) BT(7,8)
 // MATRIZ LEDS(A0, A1, A2, 16, 14, 15) multiplexados
 
@@ -18,32 +18,35 @@ const int PULSADOR_USUARIO = 2,
           BLUETOOTH_TX = 7,
           BLUETOOTH_RX = 8,
           BUZZER = 9,
-          VCC_LED_1 = A0, 
-          VCC_LED_2 = A1, 
-          VCC_LED_3 = A2, 
-          GND_LED_1 = 16, 
-          GND_LED_2 = 14, 
-          GND_LED_3 = 15; 
+          LEDMATRIX_COL_1 = A0, 
+          LEDMATRIX_COL_2 = A1, 
+          LEDMATRIX_COL_3 = A2, 
+          LEDMATRIX_ROW_1 = 16, 
+          LEDMATRIX_ROW_2 = 14, 
+          LEDMATRIX_ROW_3 = 15; 
 SoftwareSerial BT(BLUETOOTH_RX, BLUETOOTH_TX);  //RX TX 
           
-const int MATRIZ_LED[2][3] = {{VCC_LED_1, VCC_LED_2, VCC_LED_3}, 
-                              {GND_LED_1, GND_LED_2, GND_LED_3}};
+const int MATRIZ_LED[2][3] = {{LEDMATRIX_COL_1, LEDMATRIX_COL_2, LEDMATRIX_COL_3}, 
+                              {LEDMATRIX_ROW_1, LEDMATRIX_ROW_2, LEDMATRIX_ROW_3}};
 
-const int LEDS_ID[9] = {7, 8, 9, 4, 5, 6, 1, 2, 3};
+const int LEDS_ID[3][3] = { {7, 8, 9}, 
+                            {4, 5, 6}, 
+                            {1, 2, 3}};
+                        
 bool arrayLedsEncendidos[3][3] = {{0, 0, 0},
                                   {0, 0, 0},
                                   {0, 0, 0}};
 
-const int SECUENCIA_MODO_3[2][5][2] = { { {VCC_LED_2, GND_LED_1},
-                                          {VCC_LED_1, GND_LED_2},
-                                          {VCC_LED_3, GND_LED_2},
-                                          {VCC_LED_2, GND_LED_3},
-                                          {VCC_LED_2, GND_LED_2}},
-                                        { {VCC_LED_1, GND_LED_1},
-                                          {VCC_LED_3, GND_LED_1},
-                                          {VCC_LED_1, GND_LED_3},
-                                          {VCC_LED_3, GND_LED_3},
-                                          {VCC_LED_2, GND_LED_2}}};
+const int SECUENCIA_MODO_3[2][5][2] = { { {LEDMATRIX_COL_2, LEDMATRIX_ROW_1},
+                                          {LEDMATRIX_COL_1, LEDMATRIX_ROW_2},
+                                          {LEDMATRIX_COL_3, LEDMATRIX_ROW_2},
+                                          {LEDMATRIX_COL_2, LEDMATRIX_ROW_3},
+                                          {LEDMATRIX_COL_2, LEDMATRIX_ROW_2}},
+                                        { {LEDMATRIX_COL_1, LEDMATRIX_ROW_1},
+                                          {LEDMATRIX_COL_3, LEDMATRIX_ROW_1},
+                                          {LEDMATRIX_COL_1, LEDMATRIX_ROW_3},
+                                          {LEDMATRIX_COL_3, LEDMATRIX_ROW_3},
+                                          {LEDMATRIX_COL_2, LEDMATRIX_ROW_2}}};
 const int SECUENCIA_LEDS_MODO_3[2][5][2] = {{{1,0},{0,1},{2,1},{1,2},{1,1}},
                                             {{0,0},{2,0},{0,2},{2,2},{1,1}}};
 int indexSecuenciaModo3 = 0;
@@ -75,12 +78,12 @@ void setup() {
   BT.begin(9600);
   pinMode(LED_MODO_1, OUTPUT);
   pinMode(LED_MODO_2, OUTPUT);
-  pinMode(VCC_LED_1, OUTPUT);
-  pinMode(VCC_LED_2, OUTPUT);
-  pinMode(VCC_LED_3, OUTPUT);
-  pinMode(GND_LED_1, OUTPUT);
-  pinMode(GND_LED_2, OUTPUT);
-  pinMode(GND_LED_3, OUTPUT);
+  pinMode(LEDMATRIX_COL_1, OUTPUT);
+  pinMode(LEDMATRIX_COL_2, OUTPUT);
+  pinMode(LEDMATRIX_COL_3, OUTPUT);
+  pinMode(LEDMATRIX_ROW_1, OUTPUT);
+  pinMode(LEDMATRIX_ROW_2, OUTPUT);
+  pinMode(LEDMATRIX_ROW_3, OUTPUT);
   noInterrupts();
   //Timers
   setupTimer1();
@@ -97,7 +100,7 @@ void setup() {
 
 //---------------------------------------------------------------- Loop
 void loop() {
-  if (userInput == 1 && (modo == 1 || modo == 3)) {
+  if (userInput == 1 && (modo == 1 || modo == 2)) {
     mouse_control();
   }
   Bluetooth(); 
@@ -110,15 +113,13 @@ ISR(TIMER1_COMPA_vect) {
       secuenciaLedIndividual();
       break;
     case 2:
-      if(!columnaSelecionada){
-        secuenciaColumnas();
-      }
-      else{  
-        secuenciaLedPorColumna();  
-      }
+      secuenciaLedPorCapas();
       break;
     case 3:
-      secuenciaLedEspecial();
+      if(!columnaSelecionada)
+        secuenciaColumnas();
+      else  
+        secuenciaLedPorColumna();  
       break;
     default:
       break;
@@ -142,7 +143,14 @@ void selectorGeneral(){
           TIMSK3 |= (1 << OCIE3A);    // Output compare Timer3 A Interrupt Enable
           userInput = !userInput; 
           break;
+        
         case 2:
+          TIMSK1 &= ~(1 << OCIE1A);   // Output compare Timer1 A Interrupt Disable
+          TIMSK3 |= (1 << OCIE3A);    // Output compare Timer3 A Interrupt Enable
+          userInput = !userInput;        
+          break;
+        
+        case 3:
           if(!columnaSelecionada){
             apagarLeds();
             digitalWrite(MATRIZ_LED[1][matrizFila], LOW);
@@ -154,18 +162,13 @@ void selectorGeneral(){
           }
           columnaSelecionada = !columnaSelecionada;
           break;
-        case 3:
-          TIMSK1 &= ~(1 << OCIE1A);   // Output compare Timer1 A Interrupt Disable
-          TIMSK3 |= (1 << OCIE3A);    // Output compare Timer3 A Interrupt Enable
-          userInput = !userInput;        
-          break;
       } 
     }
     else{
       TIMSK1 |= (1 << OCIE1A);    // Output compare Timer1 A Interrupt Enable
       TIMSK3 &= ~(1 << OCIE3A);   // Output compare Timer3 A Interrupt Disable 
       userInput = !userInput;
-      if(modo == 2){
+      if(modo == 3){
         configuracionModo();
       }
     }
@@ -245,20 +248,20 @@ void configuracionModo(){
       break; 
     
     case 2:
-      digitalWrite(LED_MODO_2, HIGH);
-      for(int fila = 0; fila < 3; fila++){
-        digitalWrite(MATRIZ_LED[1][fila], LOW);
-      }
-      digitalWrite(MATRIZ_LED[0][matrizColumna], HIGH);
-      break;
-
-    case 3:
       capa = 0;
       digitalWrite(LED_MODO_1, HIGH);
       digitalWrite(LED_MODO_2, HIGH);
       indexSecuenciaModo3 = 0;
       digitalWrite(SECUENCIA_MODO_3[indexSecuenciaModo3][0], HIGH); 
       digitalWrite(SECUENCIA_MODO_3[indexSecuenciaModo3][1], LOW); 
+      break;
+
+    case 3:
+      digitalWrite(LED_MODO_2, HIGH);
+      for(int fila = 0; fila < 3; fila++){
+        digitalWrite(MATRIZ_LED[1][fila], LOW);
+      }
+      digitalWrite(MATRIZ_LED[0][matrizColumna], HIGH);
       break;
 
     default:
@@ -281,7 +284,7 @@ int estado() {
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
       if (arrayLedsEncendidos[i][j]) {
-        return LEDS_ID[i * 3 + j];
+        return LEDS_ID[i][j];
       }
     }
   }
@@ -319,13 +322,13 @@ void secuenciaLedPorColumna(){
   arrayLedsEncendidos[matrizFila][matrizColumna] = 1;
 }
 
-void secuenciaLedEspecial(){
-  digitalWrite(SECUENCIA_MODO_3[capa][indexSecuenciaModo3][0], LOW);
-  digitalWrite(SECUENCIA_MODO_3[capa][indexSecuenciaModo3][1], HIGH);
+void secuenciaLedPorCapas(){
+  digitalWrite(MATRIZ_LED[0][SECUENCIA_LEDS_MODO_3[capa][indexSecuenciaModo3][0]], LOW);
+  digitalWrite(MATRIZ_LED[1][SECUENCIA_LEDS_MODO_3[capa][indexSecuenciaModo3][1]], HIGH);
   arrayLedsEncendidos[SECUENCIA_LEDS_MODO_3[capa][indexSecuenciaModo3][1]][SECUENCIA_LEDS_MODO_3[capa][indexSecuenciaModo3][0]] = 0;
   indexSecuenciaModo3 == 4 ? indexSecuenciaModo3 = 0 : indexSecuenciaModo3++;
-  digitalWrite(SECUENCIA_MODO_3[capa][indexSecuenciaModo3][0], HIGH);
-  digitalWrite(SECUENCIA_MODO_3[capa][indexSecuenciaModo3][1], LOW);
+  digitalWrite(MATRIZ_LED[0][SECUENCIA_LEDS_MODO_3[capa][indexSecuenciaModo3][0]], HIGH);
+  digitalWrite(MATRIZ_LED[1][SECUENCIA_LEDS_MODO_3[capa][indexSecuenciaModo3][1]], LOW);
   arrayLedsEncendidos[SECUENCIA_LEDS_MODO_3[capa][indexSecuenciaModo3][1]][SECUENCIA_LEDS_MODO_3[capa][indexSecuenciaModo3][0]] = 1;
 }
 
@@ -353,12 +356,11 @@ void mouse_control() {
       }
       break;
     case 5:
-      if(modo == 3){
+      if(modo == 2)
         capa = !capa;
-        TIMSK1 |= (1 << OCIE1A);    // Output compare Timer1 A Interrupt Enable
-        TIMSK3 &= ~(1 << OCIE3A);   // Output compare Timer3 A Interrupt Disable 
-        userInput = !userInput;
-      }
+      TIMSK1 |= (1 << OCIE1A);    // Output compare Timer1 A Interrupt Enable
+      TIMSK3 &= ~(1 << OCIE3A);   // Output compare Timer3 A Interrupt Disable 
+      userInput = !userInput;
       break;
     case 6:
       if(interruptFlagTimer3){
