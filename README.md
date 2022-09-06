@@ -29,7 +29,7 @@ En Ambos modos se tienen las siguientes funciones:
     Enciende Columna 1 luego 2 luego 3. En caso de selección enciende led correspondiente a esa columana en las filas 3 luego 2 luego 1.
 
 
-Conexiones y Pin Out:
+## Conexiones y Pin Out:
 
         Pin | Port map  | Características   | Función                   | Descripción
         --- | --------- | ----------------- | ------------------------- | --------------------------
