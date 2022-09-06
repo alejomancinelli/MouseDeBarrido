@@ -1,40 +1,45 @@
 //---------------------------------------------------------------- Pines
-// USB(0,1) PULSADOR_USUARIO(2) BUZZER(5) LED_CONTROL(10) BT(7,8)
+// USB(0,1) PULSADOR_USUARIO(2) PULSADOR_MODO(3) LED_MODO_1(4) LED_MODO_2(5) BUZZER(9) LED_CONTROL(10) BT(7,8)
 // MATRIZ LEDS(A0, A1, A2, 16, 14, 15) multiplexados
 
 //---------------------------------------------------------------- Librerías
 #include <Mouse.h>
 #include <Keyboard.h>
 #include <SoftwareSerial.h>
-SoftwareSerial BT(8, 7);  //RX TX (evaluar pin para rx  tx)
 
 //---------------------------------------------------------------- Declaraciones
 #define MAX_VEL_LEDS 3
+#define MAX_MODOS 2
 
 const int PULSADOR_USUARIO = 2,
+          PULSADOR_MODO = 3,
+          LED_MODO_1 = 4,
+          LED_MODO_2 = 5,
           BLUETOOTH_TX = 7,
           BLUETOOTH_RX = 8,
+          BUZZER = 9,
           VCC_LED_1 = A0, 
           VCC_LED_2 = A1, 
           VCC_LED_3 = A2, 
           GND_LED_1 = 16, 
           GND_LED_2 = 14, 
           GND_LED_3 = 15; 
+SoftwareSerial BT(BLUETOOTH_RX, BLUETOOTH_TX);  //RX TX 
           
 const int MATRIZ_LED[2][3] = {{VCC_LED_1, VCC_LED_2, VCC_LED_3}, 
                               {GND_LED_1, GND_LED_2, GND_LED_3}};
 
 bool arrayLedsEncendidos[3][3] = {{0, 0, 0},
-  {0, 0, 0},
-  {0, 0, 0}
-};
+                                  {0, 0, 0},
+                                  {0, 0, 0}};
 
 // Por como tratamos a la matriz, las filas se encuentras a GND y las columnas a VCC, pero se podría cambiar
 int matrizFila = 0, matrizColumna = 0; 
+bool columnaSelecionada = 0;
 bool userInput = 0;
 
 const int timeThreshold = 200;
-long startTimePulsador = 0;
+long startTimePulsadorUsuario = 0, startTimePulsadorModo = 0;
 
 // Calculo OCR = t * (f / PS)
 // OCR1A, TCCR1B -> CS10
@@ -45,13 +50,15 @@ int timer1InterruptIndex = 1;
 
 bool interruptFlagTimer3 = 0;
 
-int  modo = 1, vel_mouse = 1, range = 5, mov = range * vel_mouse, comando; //comando almacena datos bluetooth
+int modo = 1, vel_mouse = 1, range = 5, mov = range * vel_mouse, comando; //comando almacena datos bluetooth
 
 //---------------------------------------------------------------- Setup
 void setup() {
   Serial.begin(9600);
   // Keyboard.begin();
   BT.begin(9600);
+  pinMode(LED_MODO_1, OUTPUT);
+  pinMode(LED_MODO_2, OUTPUT);
   pinMode(VCC_LED_1, OUTPUT);
   pinMode(VCC_LED_2, OUTPUT);
   pinMode(VCC_LED_3, OUTPUT);
@@ -64,42 +71,40 @@ void setup() {
   setupTimer3();
   // Interrupciones de pulsador por rising edge
   attachInterrupt(digitalPinToInterrupt(PULSADOR_USUARIO), selectorGeneral, RISING);
-  //  attachInterrupt(digitalPinToInterrupt(PULSADOR_VEL_MOUSE), selectorVelMouse, RISING);
-  attachInterrupt(digitalPinToInterrupt(PULSADOR_VEL_DISPLAY), selectorVelDisplay, RISING);
+  attachInterrupt(digitalPinToInterrupt(PULSADOR_MODO), selectorModo, RISING);
   interrupts();
   //USB
   //BT
   //Valores iniciales
-  digitalWrite(GND_LED_1, HIGH);
-  digitalWrite(GND_LED_2, HIGH);
-  digitalWrite(GND_LED_3, HIGH);
+  configuracionModo();
 }
-
 
 //---------------------------------------------------------------- Loop
 void loop() {
-  if (userInput) {
+  if (userInput == 1 && modo == 1) {
     mouse_control();
   }
-  Bluetooth();
-
-  //Recepcion BT por RX
-  //Función Mouse
-
+  Bluetooth(); 
 }
 
 //---------------------------------------------------------------- ISR
 ISR(TIMER1_COMPA_vect) {
-  switch (modo) {
+  switch(modo) {
     case 1:
-      modo1();
+      secuenciaLedIndividual();
       break;
-      /*case 2:
-          MODO2();
-          break;
-        case 3:
-          MODO3();
-          break;*/
+    case 2:
+      if(!columnaSelecionada){
+        Serial.println("Hasta acá anda");
+        secuenciaColumnas();
+      }
+      else{  
+        Serial.println("El switch anda bien");
+        secuenciaLedPorColumna();  
+      }
+      break;
+    default:
+      break;
   }
 }
 
@@ -108,25 +113,52 @@ ISR(TIMER3_COMPA_vect) {
   interruptFlagTimer3 = 1;
 }
 
-//Bandera temporal
 void selectorGeneral(){
-  if(millis() - startTimePulsador > timeThreshold){
-    startTimePulsador = millis();
+  if(millis() - startTimePulsadorUsuario > timeThreshold){
+    startTimePulsadorUsuario = millis();
     TCNT1 = 0; // Se limpia el contador del timer 1 
     Serial.println("Pulsador de usuario");
     if(!userInput){
-      TIMSK1 &= ~(1 << OCIE1A);   // Output compare Timer1 A Interrupt Disable
-      TIMSK3 |= (1 << OCIE3A);    // Output compare Timer3 A Interrupt Enable
-      userInput = !userInput; 
+      switch(modo){
+        case 1:
+          TIMSK1 &= ~(1 << OCIE1A);   // Output compare Timer1 A Interrupt Disable
+          TIMSK3 |= (1 << OCIE3A);    // Output compare Timer3 A Interrupt Enable
+          userInput = !userInput; 
+          break;
+        case 2:
+          if(!columnaSelecionada){
+            apagarLeds();
+            digitalWrite(MATRIZ_LED[1][matrizFila], LOW);
+            digitalWrite(MATRIZ_LED[0][matrizColumna], HIGH);
+          }
+          else{
+            userInput = !userInput;
+            TIMSK1 &= ~(1 << OCIE1A);   // Output compare Timer1 A Interrupt Disable
+          }
+          columnaSelecionada = !columnaSelecionada;
+          break;
+      } 
     }
     else{
       TIMSK1 |= (1 << OCIE1A);    // Output compare Timer1 A Interrupt Enable
       TIMSK3 &= ~(1 << OCIE3A);   // Output compare Timer3 A Interrupt Disable 
       userInput = !userInput;
+      if(modo == 2){
+        configuracionModo();
+      }
     }
   }
 }
 
+void selectorModo(){
+  if(millis() - startTimePulsadorModo > timeThreshold){
+    startTimePulsadorModo = millis();
+    modo == MAX_MODOS ? modo = 0 : modo++;
+    configuracionModo();
+  }
+}
+
+// Este después se borra, se configura por BT
 /*void selectorVelMouse(){
   Serial.print("velocidad del mouse: ");
   Serial.println(vel_mouse);
@@ -135,17 +167,17 @@ void selectorGeneral(){
   }*/
 
 // Este después se borra, se configura por BT
-void selectorVelDisplay() {
-  Serial.println("Velocidad de display");
-  noInterrupts();
-  timer1InterruptIndex == 2 ? timer1InterruptIndex = 0 : timer1InterruptIndex++;
-  Serial.print("Index: ");
-  Serial.println(timer1InterruptIndex);
-  OCR1A = TIMER1_INTERRUPTS[timer1InterruptIndex][0];
-  TCCR1B &= ~(1 << CS10);
-  TCCR1B |= (TIMER1_INTERRUPTS[timer1InterruptIndex][3] << CS10);
-  interrupts();
-}
+// void selectorVelDisplay() {
+//   Serial.println("Velocidad de display");
+//   noInterrupts();
+//   timer1InterruptIndex == 2 ? timer1InterruptIndex = 0 : timer1InterruptIndex++;
+//   Serial.print("Index: ");
+//   Serial.println(timer1InterruptIndex);
+//   OCR1A = TIMER1_INTERRUPTS[timer1InterruptIndex][0];
+//   TCCR1B &= ~(1 << CS10);
+//   TCCR1B |= (TIMER1_INTERRUPTS[timer1InterruptIndex][3] << CS10);
+//   interrupts();
+// }
 
 //---------------------------------------------------------------- Funciones
 void setupTimer1(){
@@ -168,6 +200,47 @@ void setupTimer3(){
   TCCR3B |= (1 << CS32);    // Prescaler 256
 }
 
+void configuracionModo(){
+  digitalWrite(LED_MODO_1, LOW);
+  digitalWrite(LED_MODO_2, LOW); 
+  apagarLeds();
+  TIMSK1 &= ~(1 << OCIE1A);   // Output compare Timer1 A Interrupt Disable
+  TIMSK3 &= ~(1 << OCIE3A);   // Output compare Timer3 A Interrupt Disable 
+  matrizFila = 0;
+  matrizColumna = 0;
+  userInput = 0;
+  columnaSelecionada = 0;
+  switch(modo){
+    case 1:
+      digitalWrite(LED_MODO_1, HIGH);
+      digitalWrite(MATRIZ_LED[1][matrizFila], LOW);
+      digitalWrite(MATRIZ_LED[0][matrizColumna], HIGH);
+      TIMSK1 |= (1 << OCIE1A);  // Output compare Timer1 A Interrupt Enable
+      break; 
+    
+    case 2:
+      digitalWrite(LED_MODO_2, HIGH);
+      for(int fila = 0; fila < 3; fila++){
+        digitalWrite(MATRIZ_LED[1][fila], LOW);
+      }
+      digitalWrite(MATRIZ_LED[0][matrizColumna], HIGH);
+      TIMSK1 |= (1 << OCIE1A);  // Output compare Timer1 A Interrupt Enable
+      break;
+    
+    default:
+      // En modo 0 se podría poner en bajo consumo, desactivando las interrupciones del clock
+      break; 
+  }
+}
+
+void apagarLeds(){
+  for(int columna = 0; columna < 3; columna++){
+    digitalWrite(MATRIZ_LED[0][columna], LOW);
+  }
+  for(int fila = 0; fila < 3; fila++){
+    digitalWrite(MATRIZ_LED[1][fila], HIGH);
+  }
+}
 
 int estado() {
   for (int i = 0; i < 3; i++) {
@@ -180,7 +253,7 @@ int estado() {
   return -1;
 }
 
-void modo1() {
+void secuenciaLedIndividual() {
   digitalWrite(MATRIZ_LED[1][matrizFila], HIGH);
   digitalWrite(MATRIZ_LED[0][matrizColumna], LOW);
   arrayLedsEncendidos[matrizFila][matrizColumna] = 0;
@@ -191,6 +264,24 @@ void modo1() {
   }
   digitalWrite(MATRIZ_LED[1][matrizFila], LOW);
   digitalWrite(MATRIZ_LED[0][matrizColumna], HIGH);
+  arrayLedsEncendidos[matrizFila][matrizColumna] = 1;
+}
+
+void secuenciaColumnas(){
+  digitalWrite(MATRIZ_LED[0][matrizColumna], LOW);
+  // Uso la primer fila para indicar que toda la columna se encuentra encendida/apagada
+  arrayLedsEncendidos[0][matrizColumna] = 0;
+  matrizColumna == 2 ? matrizColumna = 0 : matrizColumna++;
+  digitalWrite(MATRIZ_LED[0][matrizColumna], HIGH);
+  arrayLedsEncendidos[0][matrizColumna] = 1;
+}
+
+void secuenciaLedPorColumna(){
+  Serial.println("Secuencia led por columna");
+  digitalWrite(MATRIZ_LED[1][matrizFila], HIGH);
+  arrayLedsEncendidos[matrizFila][matrizColumna] = 0;
+  matrizFila == 2 ? matrizFila = 0 : matrizFila++;
+  digitalWrite(MATRIZ_LED[1][matrizFila], LOW);
   arrayLedsEncendidos[matrizFila][matrizColumna] = 1;
 }
 
@@ -228,6 +319,8 @@ void mouse_control() {
       }
       break;
     case 6:
+      // Para los click se puede poner las opción que permita pulsar de nuevo capaz? Por el doble click, 
+      // salvo que sea otro led eso
       TIMSK1 |= (1 << OCIE1A);    // Output compare Timer1 A Interrupt Enable
       TIMSK3 &= ~(1 << OCIE3A);   // Output compare Timer3 A Interrupt Disable 
       userInput = !userInput;
@@ -244,7 +337,7 @@ void mouse_control() {
       TIMSK1 |= (1 << OCIE1A);    // Output compare Timer1 A Interrupt Enable
       TIMSK3 &= ~(1 << OCIE3A);   // Output compare Timer3 A Interrupt Disable 
       userInput = !userInput;
-      Mouse.click(MOUSE_RIGHT); //click derecho
+      Mouse.click(MOUSE_RIGHT);   //click derecho
       break;
     default:
       break;
