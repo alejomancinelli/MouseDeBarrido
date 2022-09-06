@@ -9,7 +9,7 @@
 
 //---------------------------------------------------------------- Declaraciones
 #define MAX_VEL_LEDS 3
-#define MAX_MODOS 2
+#define MAX_MODOS 3
 
 const int PULSADOR_USUARIO = 2,
           PULSADOR_MODO = 3,
@@ -32,6 +32,21 @@ const int MATRIZ_LED[2][3] = {{VCC_LED_1, VCC_LED_2, VCC_LED_3},
 bool arrayLedsEncendidos[3][3] = {{0, 0, 0},
                                   {0, 0, 0},
                                   {0, 0, 0}};
+
+const int SECUENCIA_MODO_3[2][5][2] = { { {VCC_LED_2, GND_LED_1},
+                                          {VCC_LED_1, GND_LED_2},
+                                          {VCC_LED_3, GND_LED_2},
+                                          {VCC_LED_2, GND_LED_3},
+                                          {VCC_LED_2, GND_LED_2}},
+                                        { {VCC_LED_1, GND_LED_1},
+                                          {VCC_LED_3, GND_LED_1},
+                                          {VCC_LED_1, GND_LED_3},
+                                          {VCC_LED_3, GND_LED_3},
+                                          {VCC_LED_2, GND_LED_2}}};
+const int SECUENCIA_LEDS_MODO_3[2][5][2] = {{{1,0},{0,1},{2,1},{1,2},{1,1}},
+                                            {{0,0},{2,0},{0,2},{2,2},{1,1}}};
+int indexSecuenciaModo3 = 0;
+bool capa = 0;
 
 // Por como tratamos a la matriz, las filas se encuentras a GND y las columnas a VCC, pero se podría cambiar
 int matrizFila = 0, matrizColumna = 0; 
@@ -81,7 +96,7 @@ void setup() {
 
 //---------------------------------------------------------------- Loop
 void loop() {
-  if (userInput == 1 && modo == 1) {
+  if (userInput == 1 && (modo == 1 || modo == 3)) {
     mouse_control();
   }
   Bluetooth(); 
@@ -102,6 +117,9 @@ ISR(TIMER1_COMPA_vect) {
         Serial.println("El switch anda bien");
         secuenciaLedPorColumna();  
       }
+      break;
+    case 3:
+      secuenciaLedEspecial();
       break;
     default:
       break;
@@ -136,6 +154,11 @@ void selectorGeneral(){
             TIMSK1 &= ~(1 << OCIE1A);   // Output compare Timer1 A Interrupt Disable
           }
           columnaSelecionada = !columnaSelecionada;
+          break;
+        case 3:
+          TIMSK1 &= ~(1 << OCIE1A);   // Output compare Timer1 A Interrupt Disable
+          TIMSK3 |= (1 << OCIE3A);    // Output compare Timer3 A Interrupt Enable
+          userInput = !userInput;        
           break;
       } 
     }
@@ -210,12 +233,16 @@ void configuracionModo(){
   matrizColumna = 0;
   userInput = 0;
   columnaSelecionada = 0;
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      arrayLedsEncendidos[i][j] = 0;
+    }
+  }
   switch(modo){
     case 1:
       digitalWrite(LED_MODO_1, HIGH);
       digitalWrite(MATRIZ_LED[1][matrizFila], LOW);
       digitalWrite(MATRIZ_LED[0][matrizColumna], HIGH);
-      TIMSK1 |= (1 << OCIE1A);  // Output compare Timer1 A Interrupt Enable
       break; 
     
     case 2:
@@ -224,13 +251,22 @@ void configuracionModo(){
         digitalWrite(MATRIZ_LED[1][fila], LOW);
       }
       digitalWrite(MATRIZ_LED[0][matrizColumna], HIGH);
-      TIMSK1 |= (1 << OCIE1A);  // Output compare Timer1 A Interrupt Enable
       break;
-    
+
+    case 3:
+      capa = 0;
+      digitalWrite(LED_MODO_1, HIGH);
+      digitalWrite(LED_MODO_2, HIGH);
+      indexSecuenciaModo3 = 0;
+      digitalWrite(SECUENCIA_MODO_3[indexSecuenciaModo3][0], HIGH); 
+      digitalWrite(SECUENCIA_MODO_3[indexSecuenciaModo3][1], LOW); 
+      break;
+
     default:
       // En modo 0 se podría poner en bajo consumo, desactivando las interrupciones del clock
       break; 
   }
+  TIMSK1 |= (1 << OCIE1A);  // Output compare Timer1 A Interrupt Enable
 }
 
 void apagarLeds(){
@@ -285,6 +321,22 @@ void secuenciaLedPorColumna(){
   arrayLedsEncendidos[matrizFila][matrizColumna] = 1;
 }
 
+void secuenciaLedEspecial(){
+  digitalWrite(SECUENCIA_MODO_3[capa][indexSecuenciaModo3][0], LOW);
+  digitalWrite(SECUENCIA_MODO_3[capa][indexSecuenciaModo3][1], HIGH);
+  arrayLedsEncendidos[SECUENCIA_LEDS_MODO_3[capa][indexSecuenciaModo3][1]][SECUENCIA_LEDS_MODO_3[capa][indexSecuenciaModo3][0]] = 0;
+  indexSecuenciaModo3 == 4 ? indexSecuenciaModo3 = 0 : indexSecuenciaModo3++;
+  digitalWrite(SECUENCIA_MODO_3[capa][indexSecuenciaModo3][0], HIGH);
+  digitalWrite(SECUENCIA_MODO_3[capa][indexSecuenciaModo3][1], LOW);
+  arrayLedsEncendidos[SECUENCIA_LEDS_MODO_3[capa][indexSecuenciaModo3][1]][SECUENCIA_LEDS_MODO_3[capa][indexSecuenciaModo3][0]] = 1;
+  Serial.print("Row ");
+  Serial.print(SECUENCIA_LEDS_MODO_3[capa][indexSecuenciaModo3][1]);
+  Serial.print(" Col ");
+  Serial.println(SECUENCIA_LEDS_MODO_3[capa][indexSecuenciaModo3][0]);
+  Serial.print("Led encendido ");
+  Serial.println(estado());
+}
+
 void mouse_control() {
   switch (estado()) {
     //    case 0:
@@ -308,9 +360,14 @@ void mouse_control() {
         Mouse.move(-(mov), 0, 0); //flecha izquierda
       }
       break;
-    //    case 4:
-    //      modo++;
-    //      break;
+    case 4:
+      if(modo == 3){
+        capa = !capa;
+        TIMSK1 |= (1 << OCIE1A);    // Output compare Timer1 A Interrupt Enable
+        TIMSK3 &= ~(1 << OCIE3A);   // Output compare Timer3 A Interrupt Disable 
+        userInput = !userInput;
+      }
+      break;
     case 5:
       if(interruptFlagTimer3){
         interruptFlagTimer3 = 0;
