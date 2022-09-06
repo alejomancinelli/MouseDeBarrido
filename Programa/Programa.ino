@@ -29,6 +29,7 @@ SoftwareSerial BT(BLUETOOTH_RX, BLUETOOTH_TX);  //RX TX
 const int MATRIZ_LED[2][3] = {{VCC_LED_1, VCC_LED_2, VCC_LED_3}, 
                               {GND_LED_1, GND_LED_2, GND_LED_3}};
 
+const int LEDS_ID[9] = {7, 8, 9, 4, 5, 6, 1, 2, 3};
 bool arrayLedsEncendidos[3][3] = {{0, 0, 0},
                                   {0, 0, 0},
                                   {0, 0, 0}};
@@ -110,11 +111,9 @@ ISR(TIMER1_COMPA_vect) {
       break;
     case 2:
       if(!columnaSelecionada){
-        Serial.println("Hasta acá anda");
         secuenciaColumnas();
       }
       else{  
-        Serial.println("El switch anda bien");
         secuenciaLedPorColumna();  
       }
       break;
@@ -282,7 +281,7 @@ int estado() {
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
       if (arrayLedsEncendidos[i][j]) {
-        return (i * 3 + j);
+        return LEDS_ID[i * 3 + j];
       }
     }
   }
@@ -313,7 +312,6 @@ void secuenciaColumnas(){
 }
 
 void secuenciaLedPorColumna(){
-  Serial.println("Secuencia led por columna");
   digitalWrite(MATRIZ_LED[1][matrizFila], HIGH);
   arrayLedsEncendidos[matrizFila][matrizColumna] = 0;
   matrizFila == 2 ? matrizFila = 0 : matrizFila++;
@@ -329,38 +327,32 @@ void secuenciaLedEspecial(){
   digitalWrite(SECUENCIA_MODO_3[capa][indexSecuenciaModo3][0], HIGH);
   digitalWrite(SECUENCIA_MODO_3[capa][indexSecuenciaModo3][1], LOW);
   arrayLedsEncendidos[SECUENCIA_LEDS_MODO_3[capa][indexSecuenciaModo3][1]][SECUENCIA_LEDS_MODO_3[capa][indexSecuenciaModo3][0]] = 1;
-  Serial.print("Row ");
-  Serial.print(SECUENCIA_LEDS_MODO_3[capa][indexSecuenciaModo3][1]);
-  Serial.print(" Col ");
-  Serial.println(SECUENCIA_LEDS_MODO_3[capa][indexSecuenciaModo3][0]);
-  Serial.print("Led encendido ");
-  Serial.println(estado());
 }
 
 void mouse_control() {
   switch (estado()) {
-    //    case 0:
+    //    case 7:
     //      Keyboard.press(KEY_ESC); //tecla escape posible necesidad de pequeña espera
     //      Keyboard.release(KEY_ESC);
     //      break;
-    case 1:
+    case 8:
       if(interruptFlagTimer3){
         interruptFlagTimer3 = 0;
         Serial.println("Mouse arriba"); //cambiar 20 por mov
         Mouse.move(0, (-mov), 0); //flecha arriba    10=range varias experimentalmente
       }
       break;
-    // case 2:
+    // case 9:
 
     // break;
-    case 3:
+    case 4:
     if(interruptFlagTimer3){
         interruptFlagTimer3 = 0;
         Serial.println("Mouse izquierda");
         Mouse.move(-(mov), 0, 0); //flecha izquierda
       }
       break;
-    case 4:
+    case 5:
       if(modo == 3){
         capa = !capa;
         TIMSK1 |= (1 << OCIE1A);    // Output compare Timer1 A Interrupt Enable
@@ -368,14 +360,14 @@ void mouse_control() {
         userInput = !userInput;
       }
       break;
-    case 5:
+    case 6:
       if(interruptFlagTimer3){
         interruptFlagTimer3 = 0;
         Serial.println("Mouse derecha");
         Mouse.move((mov), 0, 0); //flecha derecha
       }
       break;
-    case 6:
+    case 1:
       // Para los click se puede poner las opción que permita pulsar de nuevo capaz? Por el doble click, 
       // salvo que sea otro led eso
       TIMSK1 |= (1 << OCIE1A);    // Output compare Timer1 A Interrupt Enable
@@ -383,14 +375,14 @@ void mouse_control() {
       userInput = !userInput;
       Mouse.click(MOUSE_LEFT);
       break;
-    case 7:
+    case 2:
       if(interruptFlagTimer3){
         interruptFlagTimer3 = 0;
         Serial.println("Mouse abajo");
         Mouse.move(0, (mov), 0); //flecha abajo
       }
       break;
-    case 8:
+    case 3:
       TIMSK1 |= (1 << OCIE1A);    // Output compare Timer1 A Interrupt Enable
       TIMSK3 &= ~(1 << OCIE3A);   // Output compare Timer3 A Interrupt Disable 
       userInput = !userInput;
