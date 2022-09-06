@@ -2,7 +2,7 @@
 
 El Dispositivo cuenta con 9 leds que se encenderan en 3 modos distintos.
 
-![Referencias matriz led](../MouseDeBarrido/Imagenes/matrizLed.jpg)
+![Referencias matriz led](https://github.com/alejomancinelli/MouseDeBarrido/blob/Alejo_branch/Imagenes/matrizLed.jpg)
 
 - **Modo 1**: Mouse de barrido de una capa
     
