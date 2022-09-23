@@ -1,6 +1,26 @@
-  //---------------------------------------------------------------- Pines
-// USB(0,1) PULSADOR_USUARIO(2) PULSADOR_MODO(3) LED_MODO_1(4) LED_MODO_2(5) BUZZER(9) LED_CONTROL(10) BT(7,8)
-// MATRIZ LEDS(A0, A1, A2, 16, 14, 15) multiplexados
+//---------------------------------------------------------------- Pines
+/*
+  Pin   | Port map  | Características   | Función                   | Descripción
+  ---   | --------- | ----------------- | ------------------------- | --------------------------
+    0	  | PD3       | Rx, INT3          | USB                       | 
+    1	  | PD2       | Tx, INT2          | USB                       | 
+    2	  | PD1       | INT1              | Pulsador user             | Pulsador grande selección
+    3	  | PD0       | INT0              | Pulsador modos            | Pulsador cambio de modos
+    4	  | PD4       |                   | Led modo picto            | Indicación modo PICTO
+    5	  | PC6       | PWM               | Led modo mouse            | Indicación modo MOUSE
+    6	  | PD7       |                   | Pulsador Velocidad Luces  | 
+    7	  | PE6       | INT6              | Pulsador Velocidad Mouse  | 
+    8	  | PB4       |                   | Bluetooth                 | Rx BT / Tx Arduino
+    9	  | PB5       | PWM               | Bluetooth                 | Tx BT / Rx Arduino
+    10	| PB6       | PWM               | Buzzer                    |  
+    16	| PB2       | LEDMATRIX_ROW_1   |                           | 
+    14	| PB3       | LEDMATRIX_ROW_2   |                           | 
+    15	| PB1       | LEDMATRIX_ROW_3   |                           | 
+    A0	| PF7       | LEDMATRIX_COL_1   |                           | 
+    A1	| PF6       | LEDMATRIX_COL_2   |                           | 
+    A2	| PF5       | LEDMATRIX_COL_3   |                           | 
+    A3	| PF4       |                   |                           | 
+*/
 
 //---------------------------------------------------------------- Librerías
 #include <Mouse.h>
@@ -8,24 +28,28 @@
 #include <SoftwareSerial.h>
 
 //---------------------------------------------------------------- Declaraciones
-#define MAX_VEL_LEDS 3
-#define MAX_MODOS 3
+#define MAX_VEL_LEDS 3    // (1) 0.5 seg - (2) 1 seg - (3) 2 seg
+#define MAX_MODOS 3       // (1)Mouse de 1 capa - (2)Mouse de 2 capas - (3)Pictograma
+#define MAX_VEL_MOUSE 3   
 
 const int PULSADOR_USUARIO = 2,
           PULSADOR_MODO = 3,
-          LED_MODO_1 = 4,
-          LED_MODO_2 = 5,
-          BLUETOOTH_TX = 7,
-          BLUETOOTH_RX = 8,
-          BUZZER = 9,
+          LED_MODO_PICTO = 4,
+          LED_MODO_MOUSE = 5,
+          PULSADOR_VELOCIDAD_LUCES = 6,
+          PULSADOR_VELOCIDAD_MOUSE = 7,
+          BLUETOOTH_TX = 8,
+          BLUETOOTH_RX = 9,
+          BUZZER = 10,
           LEDMATRIX_COL_1 = A0, 
           LEDMATRIX_COL_2 = A1, 
           LEDMATRIX_COL_3 = A2, 
           LEDMATRIX_ROW_1 = 16, 
           LEDMATRIX_ROW_2 = 14, 
           LEDMATRIX_ROW_3 = 15; 
-SoftwareSerial BT(BLUETOOTH_RX, BLUETOOTH_TX);  //RX TX 
+SoftwareSerial BT(BLUETOOTH_RX, BLUETOOTH_TX);  //ArudinoRX ArduinoTX, se conectan al revés con el módulo BT 
           
+// Matriz leds
 const int MATRIZ_LED[2][3] = {{LEDMATRIX_COL_1, LEDMATRIX_COL_2, LEDMATRIX_COL_3}, 
                               {LEDMATRIX_ROW_1, LEDMATRIX_ROW_2, LEDMATRIX_ROW_3}};
 
@@ -37,43 +61,45 @@ bool arrayLedsEncendidos[3][3] = {{0, 0, 0},
                                   {0, 0, 0},
                                   {0, 0, 0}};
 
+int matrizFila = 0, matrizColumna = 0; 
+bool columnaSelecionada = 0;
+bool userInput = 0;
+
+// Modos
 const int SECUENCIA_MODO_2[2][5][2] = { {{1,0},{0,1},{2,1},{1,2},{1,1}},
                                         {{0,0},{2,0},{0,2},{2,2},{1,1}}};
 int indexSecuenciaModo2 = 0;
 bool capaModo2 = 0;
 
-// Por como tratamos a la matriz, las filas se encuentras a GND y las columnas a VCC, pero se podría cambiar
-int matrizFila = 0, matrizColumna = 0; 
-bool columnaSelecionada = 0;
-bool userInput = 0;
+// Pulsadores
+const int TIME_THRESHOLD = 200;
+long startTimePulsadorUsuario = 0, startTimePulsadorModo = 0, startTimePulsadorVelLuces = 0, startTimePulsadorVelMouse = 0;
+int lastPulsVelLucesState = 0, pulsVelLucesState = 0;
+int lastPulsVelMouseState = 0, pulsVelMouseState = 0;
 
-const int timeThreshold = 200;
-long startTimePulsadorUsuario = 0, startTimePulsadorModo = 0;
-
-// Calculo OCR = t * (f / PS)
+// Timers: Calculo OCR = t * (f / PS)
 // OCR1A, TCCR1B -> CS10
 const int TIMER1_INTERRUPTS[MAX_VEL_LEDS][2] = {{31250, 0},    // 0.5 seg, PS: 256   OCR: 31250 
                                                 {65000, 0},    // 1 seg,   PS: 256   OCR: 65000 
                                                 {31250, 1}};   // 2 seg,   PS: 1024  OCR: 31250 
 int timer1InterruptIndex = 1;
-
 bool interruptFlagTimer3 = 0;
 
-int modo = 1, vel_mouse = 1, range = 5, mov = range * vel_mouse, comando; //comando almacena datos bluetooth
+// Mouse
+int modo = 1, velMouse = 1, range = 5, mov = range * velMouse, comando; //comando almacena datos bluetooth
 
 //---------------------------------------------------------------- Setup
 void setup() {
-  Serial.begin(9600);
-  // Keyboard.begin();
-  BT.begin(9600);
-  pinMode(LED_MODO_1, OUTPUT);
-  pinMode(LED_MODO_2, OUTPUT);
+  pinMode(LED_MODO_PICTO, OUTPUT);
+  pinMode(LED_MODO_MOUSE, OUTPUT);
   pinMode(LEDMATRIX_COL_1, OUTPUT);
   pinMode(LEDMATRIX_COL_2, OUTPUT);
   pinMode(LEDMATRIX_COL_3, OUTPUT);
   pinMode(LEDMATRIX_ROW_1, OUTPUT);
   pinMode(LEDMATRIX_ROW_2, OUTPUT);
   pinMode(LEDMATRIX_ROW_3, OUTPUT);
+  pinMode(PULSADOR_VELOCIDAD_LUCES, INPUT);
+  pinMode(PULSADOR_VELOCIDAD_MOUSE, INPUT);
   noInterrupts();
   //Timers
   setupTimer1();
@@ -86,17 +112,23 @@ void setup() {
   //BT
   //Valores iniciales
   configuracionModo();
+  Serial.begin(9600);
+  // Keyboard.begin();
+  BT.begin(9600);
 }
 
 //---------------------------------------------------------------- Loop
 void loop() {
   if (userInput == 1 && (modo == 1 || modo == 2)) {
-    mouse_control();
+    mouseControl();
   }
+  pulsadorVelocidadLucesPooling();
+  pulsadorVelocidadMousePooling();
   Bluetooth(); 
 }
 
 //---------------------------------------------------------------- ISR
+// Interrupción Timer 1 que realiza la secuencia de encendido de leds
 ISR(TIMER1_COMPA_vect) {
   switch(modo) {
     case 1:
@@ -116,13 +148,15 @@ ISR(TIMER1_COMPA_vect) {
   }
 }
 
+// Interrupción Timer 3 para el movimiento periódico del mouse
 ISR(TIMER3_COMPA_vect) {
-  Serial.println("Timer 3 interrupt");
   interruptFlagTimer3 = 1;
 }
 
+// Interrupción por rising edge del pulsador de usuario
 void selectorGeneral(){
-  if(millis() - startTimePulsadorUsuario > timeThreshold){
+  // Debounce del pulsador
+  if(millis() - startTimePulsadorUsuario > TIME_THRESHOLD){
     startTimePulsadorUsuario = millis();
     TCNT1 = 0; // Se limpia el contador del timer 1 
     Serial.println("Pulsador de usuario");
@@ -165,34 +199,14 @@ void selectorGeneral(){
   }
 }
 
+// Interrupción por rising edge del pulsador selector de modo
 void selectorModo(){
-  if(millis() - startTimePulsadorModo > timeThreshold){
+  if(millis() - startTimePulsadorModo > TIME_THRESHOLD){
     startTimePulsadorModo = millis();
     modo == MAX_MODOS ? modo = 0 : modo++;
     configuracionModo();
   }
 }
-
-// Este después se borra, se configura por BT
-/*void selectorVelMouse(){
-  Serial.print("velocidad del mouse: ");
-  Serial.println(vel_mouse);
-  vel_mouse==3 ? vel_mouse=1 : vel_mouse++;
-  mov= vel_mouse*range;
-  }*/
-
-// Este después se borra, se configura por BT
-// void selectorVelDisplay() {
-//   Serial.println("Velocidad de display");
-//   noInterrupts();
-//   timer1InterruptIndex == 2 ? timer1InterruptIndex = 0 : timer1InterruptIndex++;
-//   Serial.print("Index: ");
-//   Serial.println(timer1InterruptIndex);
-//   OCR1A = TIMER1_INTERRUPTS[timer1InterruptIndex][0];
-//   TCCR1B &= ~(1 << CS10);
-//   TCCR1B |= (TIMER1_INTERRUPTS[timer1InterruptIndex][3] << CS10);
-//   interrupts();
-// }
 
 //---------------------------------------------------------------- Funciones
 void setupTimer1(){
@@ -216,8 +230,8 @@ void setupTimer3(){
 }
 
 void configuracionModo(){
-  digitalWrite(LED_MODO_1, LOW);
-  digitalWrite(LED_MODO_2, LOW); 
+  digitalWrite(LED_MODO_PICTO, LOW);
+  digitalWrite(LED_MODO_MOUSE, LOW); 
   apagarLeds();
   TIMSK1 &= ~(1 << OCIE1A);   // Output compare Timer1 A Interrupt Disable
   TIMSK3 &= ~(1 << OCIE3A);   // Output compare Timer3 A Interrupt Disable 
@@ -232,22 +246,21 @@ void configuracionModo(){
   }
   switch(modo){
     case 1:
-      digitalWrite(LED_MODO_1, HIGH);
+      analogWrite(LED_MODO_MOUSE, 255/4);
       digitalWrite(MATRIZ_LED[1][matrizFila], LOW);
       digitalWrite(MATRIZ_LED[0][matrizColumna], HIGH);
       break; 
     
     case 2:
       capaModo2 = 0;
-      digitalWrite(LED_MODO_1, HIGH);
-      digitalWrite(LED_MODO_2, HIGH);
+      digitalWrite(LED_MODO_MOUSE, HIGH);
       indexSecuenciaModo2 = 0;
       digitalWrite(MATRIZ_LED[0][SECUENCIA_MODO_2[capaModo2][indexSecuenciaModo2][0]], HIGH);
       digitalWrite(MATRIZ_LED[1][SECUENCIA_MODO_2[capaModo2][indexSecuenciaModo2][1]], LOW);
       break;
 
     case 3:
-      digitalWrite(LED_MODO_2, HIGH);
+      digitalWrite(LED_MODO_PICTO, HIGH);
       for(int fila = 0; fila < 3; fila++){
         digitalWrite(MATRIZ_LED[1][fila], LOW);
       }
@@ -297,11 +310,8 @@ void secuenciaLedIndividual() {
 
 void secuenciaColumnas(){
   digitalWrite(MATRIZ_LED[0][matrizColumna], LOW);
-  // Uso la primer fila para indicar que toda la columna se encuentra encendida/apagada
-  arrayLedsEncendidos[0][matrizColumna] = 0;
   matrizColumna == 2 ? matrizColumna = 0 : matrizColumna++;
   digitalWrite(MATRIZ_LED[0][matrizColumna], HIGH);
-  arrayLedsEncendidos[0][matrizColumna] = 1;
 }
 
 void secuenciaLedPorColumna(){
@@ -322,7 +332,63 @@ void secuenciaLedPorCapas(){
   arrayLedsEncendidos[SECUENCIA_MODO_2[capaModo2][indexSecuenciaModo2][1]][SECUENCIA_MODO_2[capaModo2][indexSecuenciaModo2][0]] = 1;
 }
 
-void mouse_control() {
+// Capaz se puede usar la misma función de pooling pasando como argumentos las distintas variables de interés para cada pulsador 
+void pulsadorVelocidadLucesPooling(){
+  int lectura = digitalRead(PULSADOR_VELOCIDAD_LUCES);
+
+  if (lectura != lastPulsVelLucesState) {
+    startTimePulsadorVelLuces = millis();
+  }
+  if ((millis() - startTimePulsadorVelLuces) > TIME_THRESHOLD) {
+    if (lectura != pulsVelLucesState) {
+      pulsVelLucesState = lectura;
+      if (pulsVelLucesState == HIGH) {
+        Serial.println("Pulsador velocidad luces");
+        cambioVelocidadLuces();
+      }
+    }
+  }
+  lastPulsVelLucesState = lectura;
+}
+
+void cambioVelocidadLuces(){
+  Serial.println("Velocidad de display");
+  noInterrupts();
+  timer1InterruptIndex == 2 ? timer1InterruptIndex = 0 : timer1InterruptIndex++;
+  Serial.print("Index: ");
+  Serial.println(timer1InterruptIndex);
+  OCR1A = TIMER1_INTERRUPTS[timer1InterruptIndex][0];
+  TCCR1B &= ~(1 << CS10);
+  TCCR1B |= (TIMER1_INTERRUPTS[timer1InterruptIndex][3] << CS10);
+  interrupts();
+}
+
+void pulsadorVelocidadMousePooling(){
+  int lectura = digitalRead(PULSADOR_VELOCIDAD_MOUSE);
+
+  if (lectura != lastPulsVelMouseState) {
+    startTimePulsadorVelMouse = millis();
+  }
+  if ((millis() - startTimePulsadorVelMouse) > TIME_THRESHOLD) {
+    if (lectura != pulsVelMouseState) {
+      pulsVelMouseState = lectura;
+      if (pulsVelMouseState == HIGH) {
+        Serial.println("Pulsador velocidad mouse");
+        cambioVelocidadMouse();
+      }
+    }
+  }
+  lastPulsVelMouseState = lectura;
+}
+
+void cambioVelocidadMouse(){
+  Serial.print("Velocidad del mouse: ");
+  Serial.println(velMouse);
+  velMouse == MAX_VEL_MOUSE ? velMouse = 1 : velMouse++;
+  mov = velMouse*range;
+}
+
+void mouseControl() {
   switch (estado()) {
     //    case 7:
     //      Keyboard.press(KEY_ESC); //tecla escape posible necesidad de pequeña espera
