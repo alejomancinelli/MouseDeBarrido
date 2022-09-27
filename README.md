@@ -51,16 +51,16 @@ Para indicar los cambios de velocidad, tanto en las luces como en el mouse, se c
 
         Pin | Port map  | Características   | Función                   | Descripción
         --- | --------- | ----------------- | ------------------------- | --------------------------
-        0	| PD3       | Rx, INT3          | USB                       | 
-        1	| PD2       | Tx, INT2          | USB                       | 
-        2	| PD1       | INT1              | Pulsador user             | Pulsador grande selección
-        3	| PD0       | INT0              | Pulsador modos            | Pulsador cambio de modos
-        4	| PD4       |                   | Led modo picto            | Indicación modo PICTO
-        5	| PC6       | PWM               | Led modo mouse            | Indicación modo MOUSE
-        6	| PD7       |                   | Pulsador Velocidad Luces  | 
-        7	| PE6       | INT6              | Pulsador Velocidad Mouse  | 
-        8	| PB4       |                   | Bluetooth                 | Rx BT / Tx Arduino
-        9	| PB5       | PWM               | Bluetooth                 | Tx BT / Rx Arduino
+        0	  | PD3       | Rx, INT3          | USB                       | 
+        1	  | PD2       | Tx, INT2          | USB                       | 
+        2	  | PD1       | INT1              | Pulsador user             | Pulsador grande selección
+        3	  | PD0       | INT0              | Pulsador modos            | Pulsador cambio de modos
+        4	  | PD4       |                   | Led modo (1)              | Indicación modo (1)
+        5	  | PC6       | PWM               | Led modo (2)              | Indicación modo (2)
+        6	  | PD7       |                   | Pulsador Velocidad Luces  | 
+        7	  | PE6       | INT6              | Pulsador Velocidad Mouse  | 
+        8	  | PB4       |                   | Bluetooth                 | Rx BT / Tx Arduino
+        9	  | PB5       | PWM               | Bluetooth                 | Tx BT / Rx Arduino
         10	| PB6       | PWM               | Buzzer                    |  
         16	| PB2       | LEDMATRIX_ROW_1   |                           | 
         14	| PB3       | LEDMATRIX_ROW_2   |                           | 
