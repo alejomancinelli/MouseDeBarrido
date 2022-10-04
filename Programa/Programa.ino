@@ -30,7 +30,8 @@
 //---------------------------------------------------------------- Declaraciones
 #define MAX_VEL_LEDS 3    // (1) 0.5 seg - (2) 1 seg - (3) 2 seg
 #define MAX_MODOS 3       // (1)Mouse de 1 capa - (2)Mouse de 2 capas - (3)Pictograma
-#define MAX_VEL_MOUSE 3   
+#define MAX_VEL_MOUSE 3 
+#define SONIDO_DEL_MAL  
 
 const int PULSADOR_USUARIO = 2,
           PULSADOR_MODO = 3,
@@ -77,19 +78,30 @@ long startTimePulsadorUsuario = 0, startTimePulsadorModo = 0, startTimePulsadorV
 int lastPulsVelLucesState = 0, lastPulsVelMouseState = 0;
  
 const int MOUSE_THRESHOLD = 100;
-int mouseLastReady = 0;
+long mouseLastReady = 0;
 
 // Buzzer
-int TONOS[3][3] = { {261, 293, 329},
-                    {349, 392, 440},
-                    {493, 523, 587}};
+const int TONOS_MODO_1[3][3] = {  {261, 293, 329},
+                                  {349, 392, 440},
+                                  {493, 523, 587}};
+const int TONOS_MODO_2[2][5] = {  {261, 293, 329, 349, 440},
+                                  {523, 587, 659, 698, 784}};
+const int TONOS_MODO_3[2][3] = {  {261, 329, 349},
+                                  {293, 349, 440}};
+
+                            
+int buzzerCounter = 0, avisoBuzzerActivo = 0, avisoTone;
+// BUZZER_TIME_ON en ms, BUZZER_TIME_OFF * 10 para ms
+const int BUZZER_TIME_ON = 100, BUZZER_TIME_OFF = 20; // Pausa entre beeps = BUZZER_TIME_OFF - BUZZER_TIME_ON 
+const int BUZZER_SECUENCIA_TIME_ON = 250;
+
 
 // Timers: Calculo OCR = t * (f / PS)
 // OCR1A, TCCR1B -> CS10
 //const int TIMER1_INTERRUPTS[MAX_VEL_LEDS][2] = {{31250, 0},    // 0.5 seg, PS: 256   OCR: 31250 
 //                                                {65000, 0},    // 1 seg,   PS: 256   OCR: 65000 
 //                                                {31250, 1}};   // 2 seg,   PS: 1024  OCR: 31250 
-const int TIMER1_INTERRUPTS[] = {50, 100, 200};
+const int TIMER1_INTERRUPTS[] = {200, 100, 50};
 int timer1InterruptIndex = 1;
 int timer1InterruptCounter = 0, timer1InterruptThreshold = 100;
 
@@ -126,12 +138,15 @@ void setup() {
 
 //---------------------------------------------------------------- Loop
 void loop() {
-  if (userInput == 1 && (modo == 1 || modo == 2)) {
+  if (userInput == 1 && (modo == 1 || modo == 2)) 
     mouseControl();
-  }
   pulsadorVelocidadLucesPooling();
   pulsadorVelocidadMousePooling();
-  Bluetooth(); 
+  Bluetooth();
+  if (avisoBuzzerActivo > 0 && buzzerCounter >= BUZZER_TIME_OFF){
+    avisoCambioVelBuzzer();
+    Serial.println("BEEP");
+  } 
 }
 
 //---------------------------------------------------------------- ISR
@@ -157,6 +172,8 @@ ISR(TIMER1_COMPA_vect) {
         break;
     }
   }
+  if(avisoBuzzerActivo != 0)
+    buzzerCounter++;
 }
 
 // Interrupción por rising edge del pulsador de usuario
@@ -301,13 +318,20 @@ void secuenciaLedIndividual() {
   digitalWrite(MATRIZ_LED[1][matrizFila], LOW);
   digitalWrite(MATRIZ_LED[0][matrizColumna], HIGH);
   arrayLedsEncendidos[matrizFila][matrizColumna] = 1;
-  tone(BUZZER, TONOS[estado()]);
+  #ifdef SONIDO_DEL_MAL
+    if(avisoBuzzerActivo == 0)
+      tone(BUZZER, TONOS_MODO_1[matrizFila][matrizColumna], BUZZER_SECUENCIA_TIME_ON);
+  #endif
 }
 
 void secuenciaColumnas(){
   digitalWrite(MATRIZ_LED[0][matrizColumna], LOW);
   matrizColumna == 2 ? matrizColumna = 0 : matrizColumna++;
   digitalWrite(MATRIZ_LED[0][matrizColumna], HIGH);
+  #ifdef SONIDO_DEL_MAL
+    if(avisoBuzzerActivo == 0)
+      tone(BUZZER, TONOS_MODO_3[0][matrizColumna], BUZZER_SECUENCIA_TIME_ON);
+  #endif
 }
 
 void secuenciaLedPorColumna(){
@@ -316,6 +340,10 @@ void secuenciaLedPorColumna(){
   matrizFila == 2 ? matrizFila = 0 : matrizFila++;
   digitalWrite(MATRIZ_LED[1][matrizFila], LOW);
   arrayLedsEncendidos[matrizFila][matrizColumna] = 1;
+  #ifdef SONIDO_DEL_MAL
+    if(avisoBuzzerActivo == 0)
+      tone(BUZZER, TONOS_MODO_3[1][matrizFila], BUZZER_SECUENCIA_TIME_ON);
+  #endif
 }
 
 void secuenciaLedPorCapas(){
@@ -326,6 +354,10 @@ void secuenciaLedPorCapas(){
   digitalWrite(MATRIZ_LED[0][SECUENCIA_MODO_2[capaModo2][indexSecuenciaModo2][0]], HIGH);
   digitalWrite(MATRIZ_LED[1][SECUENCIA_MODO_2[capaModo2][indexSecuenciaModo2][1]], LOW);
   arrayLedsEncendidos[SECUENCIA_MODO_2[capaModo2][indexSecuenciaModo2][1]][SECUENCIA_MODO_2[capaModo2][indexSecuenciaModo2][0]] = 1;
+  #ifdef SONIDO_DEL_MAL
+    if(avisoBuzzerActivo == 0)
+      tone(BUZZER, TONOS_MODO_2[capaModo2][indexSecuenciaModo2], BUZZER_SECUENCIA_TIME_ON);
+  #endif
 }
 
 // Capaz se puede usar la misma función de pooling pasando como argumentos las distintas variables de interés para cada pulsador 
@@ -348,6 +380,8 @@ void cambioVelocidadLuces(){
   Serial.println("Velocidad de display");
   noInterrupts();
   timer1InterruptIndex == MAX_VEL_LEDS - 1 ? timer1InterruptIndex = 0 : timer1InterruptIndex++;
+  avisoBuzzerActivo = timer1InterruptIndex + 1;
+  avisoTone = 261;
   Serial.print("Index: ");
   Serial.println(timer1InterruptIndex);
   timer1InterruptThreshold = TIMER1_INTERRUPTS[timer1InterruptIndex];
@@ -373,10 +407,19 @@ void pulsadorVelocidadMousePooling(){
 }
 
 void cambioVelocidadMouse(){
+  velMouse == MAX_VEL_MOUSE ? velMouse = 1 : velMouse++;
   Serial.print("Velocidad del mouse: ");
   Serial.println(velMouse);
-  velMouse == MAX_VEL_MOUSE ? velMouse = 1 : velMouse++;
+  avisoBuzzerActivo = velMouse;
+  avisoTone = 523;
   mov = velMouse*range;
+}
+
+void avisoCambioVelBuzzer(){
+  noTone(BUZZER);
+  tone(BUZZER, avisoTone, BUZZER_TIME_ON);
+  buzzerCounter = 0;
+  avisoBuzzerActivo--;
 }
 
 bool mouseReady(){
