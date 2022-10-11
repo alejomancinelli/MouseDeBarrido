@@ -29,22 +29,39 @@ En Ambos modos se tienen las siguientes funciones:
 
     Enciende Columna 1 luego 2 luego 3. En caso de selección enciende led correspondiente a esa columana en las filas 3 luego 2 luego 1.
 
+## Pulsadores 
 
-## Conexiones y Pin Out:
+- User: pulsador general con el cual el usuario pausa la secuencia de la matriz, seleccionando una acción del mouse o eligiendo un estado en el modo pictograma.
+- Modos: permite cambiar el modo con el cual se desea trabajar.
+- Velocidad luces: cambia la frecuencia con la que se prenden las luces de la matriz.
+- Velocidad mouse: ajusta la velocidad de movimiento del mouse modificando la distancia de movimiento.
+
+
+## Luces e indicadores
+
+Se cuenta con 2 leds para indicar los distintos modos. Al estar ambos apagados, el dispositivo no se encuentra en funcionamiento. 
+
+  - Led modo mouse: al brillar al 50% indica el modo 1, al brillar al 100% indica el modo 2
+  - Led modo picto: indica el modo 3
+
+Para indicar los cambios de velocidad, tanto en las luces como en el mouse, se cuenta con un buzzer que emitirá una cantidad de sonidos proporcional a la velocidad determinada. Cada pulsador cuenta con un tono particular.
+
+
+## Conexiones y Pin Out
 
         Pin | Port map  | Características   | Función                   | Descripción
         --- | --------- | ----------------- | ------------------------- | --------------------------
-        0	| PD3       | Rx, INT3          | USB                       | 
-        1	| PD2       | Tx, INT2          | USB                       | 
-        2	| PD1       | INT1              | Pulsador user             | Pulsador grande selección
-        3	| PD0       | INT0              | Pulsador modos            | Pulsador cambio de modos
-        4	| PD4       |                   | LED MODO 1                | Indicación modo MOUSE
-        5	| PC6       | PWM               | LED MODO 2                | Indicación modo PICTO
-        6	| PD7       |                   | Pulsador Velocidad Luces  | 
-        7	| PE6       | Rx, INT6          | Bluetooth                 | 
-        8	| PB4       | Tx                | Bluetooth                 | 
-        9	| PB5       | PWM               | Buzzer                    | 
-        10	| PB6       | PWM               | Pulsador Velocidad Mouse  |  
+        0	  | PD3       | Rx, INT3          | USB                       | 
+        1	  | PD2       | Tx, INT2          | USB                       | 
+        2	  | PD1       | INT1              | Pulsador user             | Pulsador grande selección
+        3	  | PD0       | INT0              | Pulsador modos            | Pulsador cambio de modos
+        4	  | PD4       |                   | Led modo (1)              | Indicación modo (1)
+        5	  | PC6       | PWM               | Led modo (2)              | Indicación modo (2)
+        6	  | PD7       |                   | Pulsador Velocidad Luces  | 
+        7	  | PE6       | INT6              | Pulsador Velocidad Mouse  | 
+        8	  | PB4       |                   | Bluetooth                 | Rx BT / Tx Arduino
+        9	  | PB5       | PWM               | Bluetooth                 | Tx BT / Rx Arduino
+        10	| PB6       | PWM               | Buzzer                    |  
         16	| PB2       | LEDMATRIX_ROW_1   |                           | 
         14	| PB3       | LEDMATRIX_ROW_2   |                           | 
         15	| PB1       | LEDMATRIX_ROW_3   |                           | 

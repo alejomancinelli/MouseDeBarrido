@@ -1,6 +1,26 @@
-  //---------------------------------------------------------------- Pines
-// USB(0,1) PULSADOR_USUARIO(2) PULSADOR_MODO(3) LED_MODO_1(4) LED_MODO_2(5) BUZZER(9) LED_CONTROL(10) BT(7,8)
-// MATRIZ LEDS(A0, A1, A2, 16, 14, 15) multiplexados
+//---------------------------------------------------------------- Pines
+/*
+  Pin   | Port map  | Características   | Función                   | Descripción
+  ---   | --------- | ----------------- | ------------------------- | --------------------------
+    0	  | PD3       | Rx, INT3          | USB                       | 
+    1	  | PD2       | Tx, INT2          | USB                       | 
+    2	  | PD1       | INT1              | Pulsador user             | Pulsador grande selección
+    3	  | PD0       | INT0              | Pulsador modos            | Pulsador cambio de modos
+    4	  | PD4       |                   | Led modo (1)              | Indicación modo (1)
+    5	  | PC6       | PWM               | Led modo (2)              | Indicación modo (2)
+    6	  | PD7       |                   | Pulsador Velocidad Luces  | 
+    7	  | PE6       | INT6              | Pulsador Velocidad Mouse  | 
+    8	  | PB4       |                   | Bluetooth                 | Rx BT / Tx Arduino
+    9	  | PB5       | PWM               | Bluetooth                 | Tx BT / Rx Arduino
+    10	| PB6       | PWM               | Buzzer                    |  
+    16	| PB2       | LEDMATRIX_ROW_1   |                           | 
+    14	| PB3       | LEDMATRIX_ROW_2   |                           | 
+    15	| PB1       | LEDMATRIX_ROW_3   |                           | 
+    A0	| PF7       | LEDMATRIX_COL_1   |                           | 
+    A1	| PF6       | LEDMATRIX_COL_2   |                           | 
+    A2	| PF5       | LEDMATRIX_COL_3   |                           | 
+    A3	| PF4       |                   |                           | 
+*/
 
 //---------------------------------------------------------------- Librerías
 #include <Mouse.h>
@@ -8,24 +28,29 @@
 #include <SoftwareSerial.h>
 
 //---------------------------------------------------------------- Declaraciones
-#define MAX_VEL_LEDS 3
-#define MAX_MODOS 3
+#define MAX_VEL_LEDS 3    // (1) 0.5 seg - (2) 1 seg - (3) 2 seg
+#define MAX_MODOS 3       // (1)Mouse de 1 capa - (2)Mouse de 2 capas - (3)Pictograma
+#define MAX_VEL_MOUSE 3 
+#define SONIDO_DEL_MAL  
 
 const int PULSADOR_USUARIO = 2,
           PULSADOR_MODO = 3,
-          LED_MODO_1 = 4,
+          LED_MODO_1 = 4, 
           LED_MODO_2 = 5,
-          BLUETOOTH_TX = 7,
-          BLUETOOTH_RX = 8,
-          BUZZER = 9,
+          PULSADOR_VELOCIDAD_LUCES = 6,
+          PULSADOR_VELOCIDAD_MOUSE = 7,
+          BLUETOOTH_TX = 8,
+          BLUETOOTH_RX = 9,
+          BUZZER = 10,
           LEDMATRIX_COL_1 = A0, 
           LEDMATRIX_COL_2 = A1, 
           LEDMATRIX_COL_3 = A2, 
           LEDMATRIX_ROW_1 = 16, 
           LEDMATRIX_ROW_2 = 14, 
           LEDMATRIX_ROW_3 = 15; 
-SoftwareSerial BT(BLUETOOTH_RX, BLUETOOTH_TX);  //RX TX 
+SoftwareSerial BT(BLUETOOTH_RX, BLUETOOTH_TX);  //ArudinoRX ArduinoTX, se conectan al revés con el módulo BT 
           
+// Matriz leds
 const int MATRIZ_LED[2][3] = {{LEDMATRIX_COL_1, LEDMATRIX_COL_2, LEDMATRIX_COL_3}, 
                               {LEDMATRIX_ROW_1, LEDMATRIX_ROW_2, LEDMATRIX_ROW_3}};
 
@@ -37,35 +62,54 @@ bool arrayLedsEncendidos[3][3] = {{0, 0, 0},
                                   {0, 0, 0},
                                   {0, 0, 0}};
 
+int matrizFila = 0, matrizColumna = 0; 
+bool columnaSelecionada = 0;
+bool userInput = 0;
+
+// Modos
 const int SECUENCIA_MODO_2[2][5][2] = { {{1,0},{0,1},{2,1},{1,2},{1,1}},
                                         {{0,0},{2,0},{0,2},{2,2},{1,1}}};
 int indexSecuenciaModo2 = 0;
 bool capaModo2 = 0;
 
-// Por como tratamos a la matriz, las filas se encuentras a GND y las columnas a VCC, pero se podría cambiar
-int matrizFila = 0, matrizColumna = 0; 
-bool columnaSelecionada = 0;
-bool userInput = 0;
+// Pulsadores
+const int TIME_THRESHOLD = 200;
+long startTimePulsadorUsuario = 0, startTimePulsadorModo = 0, startTimePulsadorVelLuces = 0, startTimePulsadorVelMouse = 0;
+int lastPulsVelLucesState = 0, lastPulsVelMouseState = 0;
+ 
+const int MOUSE_THRESHOLD = 100;
+long mouseLastReady = 0;
 
-const int timeThreshold = 200;
-long startTimePulsadorUsuario = 0, startTimePulsadorModo = 0;
+// Buzzer
+const int TONOS_MODO_1[3][3] = {  {261, 293, 329},
+                                  {349, 392, 440},
+                                  {493, 523, 587}};
+const int TONOS_MODO_2[2][5] = {  {261, 293, 329, 349, 440},
+                                  {523, 587, 659, 698, 784}};
+const int TONOS_MODO_3[2][3] = {  {261, 329, 349},
+                                  {293, 349, 440}};
 
-// Calculo OCR = t * (f / PS)
+                            
+int buzzerCounter = 0, avisoBuzzerActivo = 0, avisoTone;
+// BUZZER_TIME_ON en ms, BUZZER_TIME_OFF * 10 para ms
+const int BUZZER_TIME_ON = 100, BUZZER_TIME_OFF = 20; // Pausa entre beeps = BUZZER_TIME_OFF - BUZZER_TIME_ON 
+const int BUZZER_SECUENCIA_TIME_ON = 250;
+
+
+// Timers: Calculo OCR = t * (f / PS)
 // OCR1A, TCCR1B -> CS10
-const int TIMER1_INTERRUPTS[MAX_VEL_LEDS][2] = {{31250, 0},    // 0.5 seg, PS: 256   OCR: 31250 
-                                                {65000, 0},    // 1 seg,   PS: 256   OCR: 65000 
-                                                {31250, 1}};   // 2 seg,   PS: 1024  OCR: 31250 
+//const int TIMER1_INTERRUPTS[MAX_VEL_LEDS][2] = {{31250, 0},    // 0.5 seg, PS: 256   OCR: 31250 
+//                                                {65000, 0},    // 1 seg,   PS: 256   OCR: 65000 
+//                                                {31250, 1}};   // 2 seg,   PS: 1024  OCR: 31250 
+const int TIMER1_INTERRUPTS[] = {200, 100, 50};
 int timer1InterruptIndex = 1;
+int timer1InterruptCounter = 0, timer1InterruptThreshold = 100;
 
-bool interruptFlagTimer3 = 0;
-
-int modo = 1, vel_mouse = 1, range = 5, mov = range * vel_mouse, comando; //comando almacena datos bluetooth
+// Mouse
+int modo = 1, velMouse = 1, range = 5, mov = range * velMouse, comando; //comando almacena datos bluetooth
 
 //---------------------------------------------------------------- Setup
 void setup() {
-  Serial.begin(9600);
-  // Keyboard.begin();
-  BT.begin(9600);
   pinMode(LED_MODO_1, OUTPUT);
   pinMode(LED_MODO_2, OUTPUT);
   pinMode(LEDMATRIX_COL_1, OUTPUT);
@@ -74,10 +118,11 @@ void setup() {
   pinMode(LEDMATRIX_ROW_1, OUTPUT);
   pinMode(LEDMATRIX_ROW_2, OUTPUT);
   pinMode(LEDMATRIX_ROW_3, OUTPUT);
+  pinMode(PULSADOR_VELOCIDAD_LUCES, INPUT);
+  pinMode(PULSADOR_VELOCIDAD_MOUSE, INPUT);
   noInterrupts();
   //Timers
   setupTimer1();
-  setupTimer3();
   // Interrupciones de pulsador por rising edge
   attachInterrupt(digitalPinToInterrupt(PULSADOR_USUARIO), selectorGeneral, RISING);
   attachInterrupt(digitalPinToInterrupt(PULSADOR_MODO), selectorModo, RISING);
@@ -86,43 +131,55 @@ void setup() {
   //BT
   //Valores iniciales
   configuracionModo();
+  Serial.begin(9600);
+  // Keyboard.begin();
+  // BT.begin(9600);
 }
 
 //---------------------------------------------------------------- Loop
 void loop() {
-  if (userInput == 1 && (modo == 1 || modo == 2)) {
-    mouse_control();
-  }
-  Bluetooth(); 
+  if (userInput == 1 && (modo == 1 || modo == 2)) 
+    mouseControl();
+  pulsadorVelocidadLucesPooling();
+  pulsadorVelocidadMousePooling();
+  Bluetooth();
+  if (avisoBuzzerActivo > 0 && buzzerCounter >= BUZZER_TIME_OFF){
+    avisoCambioVelBuzzer();
+    Serial.println("BEEP");
+  } 
 }
 
 //---------------------------------------------------------------- ISR
+// Interrupción Timer 1 que realiza la secuencia de encendido de leds
 ISR(TIMER1_COMPA_vect) {
-  switch(modo) {
-    case 1:
-      secuenciaLedIndividual();
-      break;
-    case 2:
-      secuenciaLedPorCapas();
-      break;
-    case 3:
-      if(!columnaSelecionada)
-        secuenciaColumnas();
-      else  
-        secuenciaLedPorColumna();  
-      break;
-    default:
-      break;
+  timer1InterruptCounter++;
+  if(timer1InterruptCounter == timer1InterruptThreshold){
+    timer1InterruptCounter = 0;
+    switch(modo) {
+      case 1:
+        secuenciaLedIndividual();
+        break;
+      case 2:
+        secuenciaLedPorCapas();
+        break;
+      case 3:
+        if(!columnaSelecionada)
+          secuenciaColumnas();
+        else  
+          secuenciaLedPorColumna();  
+        break;
+      default:
+        break;
+    }
   }
+  if(avisoBuzzerActivo != 0)
+    buzzerCounter++;
 }
 
-ISR(TIMER3_COMPA_vect) {
-  Serial.println("Timer 3 interrupt");
-  interruptFlagTimer3 = 1;
-}
-
+// Interrupción por rising edge del pulsador de usuario
 void selectorGeneral(){
-  if(millis() - startTimePulsadorUsuario > timeThreshold){
+  // Debounce del pulsador
+  if(millis() - startTimePulsadorUsuario > TIME_THRESHOLD){
     startTimePulsadorUsuario = millis();
     TCNT1 = 0; // Se limpia el contador del timer 1 
     Serial.println("Pulsador de usuario");
@@ -130,13 +187,11 @@ void selectorGeneral(){
       switch(modo){
         case 1:
           TIMSK1 &= ~(1 << OCIE1A);   // Output compare Timer1 A Interrupt Disable
-          TIMSK3 |= (1 << OCIE3A);    // Output compare Timer3 A Interrupt Enable
           userInput = !userInput; 
           break;
         
         case 2:
           TIMSK1 &= ~(1 << OCIE1A);   // Output compare Timer1 A Interrupt Disable
-          TIMSK3 |= (1 << OCIE3A);    // Output compare Timer3 A Interrupt Enable
           userInput = !userInput;        
           break;
         
@@ -156,7 +211,6 @@ void selectorGeneral(){
     }
     else{
       TIMSK1 |= (1 << OCIE1A);    // Output compare Timer1 A Interrupt Enable
-      TIMSK3 &= ~(1 << OCIE3A);   // Output compare Timer3 A Interrupt Disable 
       userInput = !userInput;
       if(modo == 3){
         configuracionModo();
@@ -165,62 +219,33 @@ void selectorGeneral(){
   }
 }
 
+// Interrupción por rising edge del pulsador selector de modo
 void selectorModo(){
-  if(millis() - startTimePulsadorModo > timeThreshold){
+  if(millis() - startTimePulsadorModo > TIME_THRESHOLD){
     startTimePulsadorModo = millis();
     modo == MAX_MODOS ? modo = 0 : modo++;
     configuracionModo();
   }
 }
 
-// Este después se borra, se configura por BT
-/*void selectorVelMouse(){
-  Serial.print("velocidad del mouse: ");
-  Serial.println(vel_mouse);
-  vel_mouse==3 ? vel_mouse=1 : vel_mouse++;
-  mov= vel_mouse*range;
-  }*/
-
-// Este después se borra, se configura por BT
-// void selectorVelDisplay() {
-//   Serial.println("Velocidad de display");
-//   noInterrupts();
-//   timer1InterruptIndex == 2 ? timer1InterruptIndex = 0 : timer1InterruptIndex++;
-//   Serial.print("Index: ");
-//   Serial.println(timer1InterruptIndex);
-//   OCR1A = TIMER1_INTERRUPTS[timer1InterruptIndex][0];
-//   TCCR1B &= ~(1 << CS10);
-//   TCCR1B |= (TIMER1_INTERRUPTS[timer1InterruptIndex][3] << CS10);
-//   interrupts();
-// }
-
 //---------------------------------------------------------------- Funciones
 void setupTimer1(){
   TCCR1A = 0;
   TCCR1B = 0;
   TCNT1 = 0;
-  OCR1A = 65000;
+  OCR1A = 20000;
+  timer1InterruptIndex = 1;
   TCCR1B |= (1 << WGM12);   //CTC
-  TCCR1B |= (1 << CS12);    // Prescaler 256
+  TCCR1B |= (1 << CS11);    // Prescaler 256
   TIMSK1 |= (1 << OCIE1A);  // Output compare Timer1 A Interrupt Enable
 }
 
-void setupTimer3(){
-  // Ajustar para el mov del mouse
-  TCCR3A = 0;
-  TCCR3B = 0;
-  TCNT3 = 0;
-  OCR3A = 6500;
-  TCCR3B |= (1 << WGM32);   //CTC
-  TCCR3B |= (1 << CS32);    // Prescaler 256
-}
-
 void configuracionModo(){
+  noTone(BUZZER);
   digitalWrite(LED_MODO_1, LOW);
   digitalWrite(LED_MODO_2, LOW); 
   apagarLeds();
   TIMSK1 &= ~(1 << OCIE1A);   // Output compare Timer1 A Interrupt Disable
-  TIMSK3 &= ~(1 << OCIE3A);   // Output compare Timer3 A Interrupt Disable 
   matrizFila = 0;
   matrizColumna = 0;
   userInput = 0;
@@ -239,7 +264,6 @@ void configuracionModo(){
     
     case 2:
       capaModo2 = 0;
-      digitalWrite(LED_MODO_1, HIGH);
       digitalWrite(LED_MODO_2, HIGH);
       indexSecuenciaModo2 = 0;
       digitalWrite(MATRIZ_LED[0][SECUENCIA_MODO_2[capaModo2][indexSecuenciaModo2][0]], HIGH);
@@ -247,6 +271,7 @@ void configuracionModo(){
       break;
 
     case 3:
+      digitalWrite(LED_MODO_1, HIGH);
       digitalWrite(LED_MODO_2, HIGH);
       for(int fila = 0; fila < 3; fila++){
         digitalWrite(MATRIZ_LED[1][fila], LOW);
@@ -293,15 +318,20 @@ void secuenciaLedIndividual() {
   digitalWrite(MATRIZ_LED[1][matrizFila], LOW);
   digitalWrite(MATRIZ_LED[0][matrizColumna], HIGH);
   arrayLedsEncendidos[matrizFila][matrizColumna] = 1;
+  #ifdef SONIDO_DEL_MAL
+    if(avisoBuzzerActivo == 0)
+      tone(BUZZER, TONOS_MODO_1[matrizFila][matrizColumna], BUZZER_SECUENCIA_TIME_ON);
+  #endif
 }
 
 void secuenciaColumnas(){
   digitalWrite(MATRIZ_LED[0][matrizColumna], LOW);
-  // Uso la primer fila para indicar que toda la columna se encuentra encendida/apagada
-  arrayLedsEncendidos[0][matrizColumna] = 0;
   matrizColumna == 2 ? matrizColumna = 0 : matrizColumna++;
   digitalWrite(MATRIZ_LED[0][matrizColumna], HIGH);
-  arrayLedsEncendidos[0][matrizColumna] = 1;
+  #ifdef SONIDO_DEL_MAL
+    if(avisoBuzzerActivo == 0)
+      tone(BUZZER, TONOS_MODO_3[0][matrizColumna], BUZZER_SECUENCIA_TIME_ON);
+  #endif
 }
 
 void secuenciaLedPorColumna(){
@@ -310,6 +340,10 @@ void secuenciaLedPorColumna(){
   matrizFila == 2 ? matrizFila = 0 : matrizFila++;
   digitalWrite(MATRIZ_LED[1][matrizFila], LOW);
   arrayLedsEncendidos[matrizFila][matrizColumna] = 1;
+  #ifdef SONIDO_DEL_MAL
+    if(avisoBuzzerActivo == 0)
+      tone(BUZZER, TONOS_MODO_3[1][matrizFila], BUZZER_SECUENCIA_TIME_ON);
+  #endif
 }
 
 void secuenciaLedPorCapas(){
@@ -320,17 +354,87 @@ void secuenciaLedPorCapas(){
   digitalWrite(MATRIZ_LED[0][SECUENCIA_MODO_2[capaModo2][indexSecuenciaModo2][0]], HIGH);
   digitalWrite(MATRIZ_LED[1][SECUENCIA_MODO_2[capaModo2][indexSecuenciaModo2][1]], LOW);
   arrayLedsEncendidos[SECUENCIA_MODO_2[capaModo2][indexSecuenciaModo2][1]][SECUENCIA_MODO_2[capaModo2][indexSecuenciaModo2][0]] = 1;
+  #ifdef SONIDO_DEL_MAL
+    if(avisoBuzzerActivo == 0)
+      tone(BUZZER, TONOS_MODO_2[capaModo2][indexSecuenciaModo2], BUZZER_SECUENCIA_TIME_ON);
+  #endif
 }
 
-void mouse_control() {
+// Capaz se puede usar la misma función de pooling pasando como argumentos las distintas variables de interés para cada pulsador 
+void pulsadorVelocidadLucesPooling(){
+  int lectura = digitalRead(PULSADOR_VELOCIDAD_LUCES);
+  
+  if (lastPulsVelLucesState == LOW && lectura != lastPulsVelLucesState) {
+    startTimePulsadorVelLuces = millis();
+  }
+  if ((millis() - startTimePulsadorVelLuces) > TIME_THRESHOLD) {
+    if (lastPulsVelLucesState == HIGH && lectura != lastPulsVelLucesState) {
+      Serial.println("Pulsador velocidad luces");
+      cambioVelocidadLuces();
+    }
+  }
+  lastPulsVelLucesState = lectura;
+}
+
+void cambioVelocidadLuces(){
+  Serial.println("Velocidad de display");
+  noInterrupts();
+  timer1InterruptIndex == MAX_VEL_LEDS - 1 ? timer1InterruptIndex = 0 : timer1InterruptIndex++;
+  avisoBuzzerActivo = timer1InterruptIndex + 1;
+  avisoTone = 261;
+  Serial.print("Index: ");
+  Serial.println(timer1InterruptIndex);
+  timer1InterruptThreshold = TIMER1_INTERRUPTS[timer1InterruptIndex];
+  Serial.print("Threshold: ");
+  Serial.println(timer1InterruptThreshold);
+  timer1InterruptCounter = 0;
+  interrupts();
+}
+
+void pulsadorVelocidadMousePooling(){
+  int lectura = digitalRead(PULSADOR_VELOCIDAD_MOUSE);
+
+  if (lastPulsVelMouseState == LOW && lectura != lastPulsVelMouseState) {
+    startTimePulsadorVelMouse = millis();
+  }
+  if ((millis() - startTimePulsadorVelMouse) > TIME_THRESHOLD) {
+    if (lastPulsVelMouseState == HIGH && lectura != lastPulsVelMouseState) {
+      Serial.println("Pulsador velocidad mouse");
+      cambioVelocidadMouse();
+    }
+  }
+  lastPulsVelMouseState = lectura;
+}
+
+void cambioVelocidadMouse(){
+  velMouse == MAX_VEL_MOUSE ? velMouse = 1 : velMouse++;
+  Serial.print("Velocidad del mouse: ");
+  Serial.println(velMouse);
+  avisoBuzzerActivo = velMouse;
+  avisoTone = 523;
+  mov = velMouse*range;
+}
+
+void avisoCambioVelBuzzer(){
+  noTone(BUZZER);
+  tone(BUZZER, avisoTone, BUZZER_TIME_ON);
+  buzzerCounter = 0;
+  avisoBuzzerActivo--;
+}
+
+bool mouseReady(){
+  return (millis() - mouseLastReady) > MOUSE_THRESHOLD;
+}
+
+void mouseControl() {
   switch (estado()) {
     //    case 7:
     //      Keyboard.press(KEY_ESC); //tecla escape posible necesidad de pequeña espera
     //      Keyboard.release(KEY_ESC);
     //      break;
     case 8:
-      if(interruptFlagTimer3){
-        interruptFlagTimer3 = 0;
+      if(mouseReady()){
+        mouseLastReady = millis();
         Serial.println("Mouse arriba"); //cambiar 20 por mov
         Mouse.move(0, (-mov), 0); //flecha arriba    10=range varias experimentalmente
       }
@@ -339,8 +443,8 @@ void mouse_control() {
 
     // break;
     case 4:
-    if(interruptFlagTimer3){
-        interruptFlagTimer3 = 0;
+    if(mouseReady()){
+        mouseLastReady = millis();
         Serial.println("Mouse izquierda");
         Mouse.move(-(mov), 0, 0); //flecha izquierda
       }
@@ -349,12 +453,11 @@ void mouse_control() {
       if(modo == 2)
         capaModo2 = !capaModo2;
       TIMSK1 |= (1 << OCIE1A);    // Output compare Timer1 A Interrupt Enable
-      TIMSK3 &= ~(1 << OCIE3A);   // Output compare Timer3 A Interrupt Disable 
       userInput = !userInput;
       break;
     case 6:
-      if(interruptFlagTimer3){
-        interruptFlagTimer3 = 0;
+      if(mouseReady()){
+        mouseLastReady = millis();
         Serial.println("Mouse derecha");
         Mouse.move((mov), 0, 0); //flecha derecha
       }
@@ -363,20 +466,20 @@ void mouse_control() {
       // Para los click se puede poner las opción que permita pulsar de nuevo capaz? Por el doble click, 
       // salvo que sea otro led eso
       TIMSK1 |= (1 << OCIE1A);    // Output compare Timer1 A Interrupt Enable
-      TIMSK3 &= ~(1 << OCIE3A);   // Output compare Timer3 A Interrupt Disable 
+      TIMSK0 &= ~(1 << OCIE0A);   // Output compare Timer3 A Interrupt Disable 
       userInput = !userInput;
       Mouse.click(MOUSE_LEFT);
       break;
     case 2:
-      if(interruptFlagTimer3){
-        interruptFlagTimer3 = 0;
+      if(mouseReady()){
+        mouseLastReady = millis();
         Serial.println("Mouse abajo");
         Mouse.move(0, (mov), 0); //flecha abajo
       }
       break;
     case 3:
       TIMSK1 |= (1 << OCIE1A);    // Output compare Timer1 A Interrupt Enable
-      TIMSK3 &= ~(1 << OCIE3A);   // Output compare Timer3 A Interrupt Disable 
+      TIMSK0 &= ~(1 << OCIE0A);   // Output compare Timer3 A Interrupt Disable 
       userInput = !userInput;
       Mouse.click(MOUSE_RIGHT);   //click derecho
       break;
