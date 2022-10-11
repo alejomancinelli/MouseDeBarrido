@@ -1,25 +1,25 @@
 //---------------------------------------------------------------- Pines
 /*
-  Pin   | Port map  | Características   | Función                   | Descripción
-  ---   | --------- | ----------------- | ------------------------- | --------------------------
-    0	  | PD3       | Rx, INT3          | USB                       | 
-    1	  | PD2       | Tx, INT2          | USB                       | 
-    2	  | PD1       | INT1              | Pulsador user             | Pulsador grande selección
-    3	  | PD0       | INT0              | Pulsador modos            | Pulsador cambio de modos
-    4	  | PD4       |                   | Led modo (1)              | Indicación modo (1)
-    5	  | PC6       | PWM               | Led modo (2)              | Indicación modo (2)
-    6	  | PD7       |                   | Pulsador Velocidad Luces  | 
-    7	  | PE6       | INT6              | Pulsador Velocidad Mouse  | 
-    8	  | PB4       |                   | Bluetooth                 | Rx BT / Tx Arduino
-    9	  | PB5       | PWM               | Bluetooth                 | Tx BT / Rx Arduino
-    10	| PB6       | PWM               | Buzzer                    |  
-    16	| PB2       | LEDMATRIX_ROW_1   |                           | 
-    14	| PB3       | LEDMATRIX_ROW_2   |                           | 
-    15	| PB1       | LEDMATRIX_ROW_3   |                           | 
-    A0	| PF7       | LEDMATRIX_COL_1   |                           | 
-    A1	| PF6       | LEDMATRIX_COL_2   |                           | 
-    A2	| PF5       | LEDMATRIX_COL_3   |                           | 
-    A3	| PF4       |                   |                           | 
+  Pin | Port map  | Características   | Función                   | Descripción
+  --- | --------- | ----------------- | ------------------------- | --------------------------
+  0   | PD3       | Rx, INT3          | USB                       | 
+  1   | PD2       | Tx, INT2          | USB                       | 
+  2   | PD1       | INT1              | Pulsador user             | Pulsador grande selección
+  3   | PD0       | INT0              | Pulsador modos            | Pulsador cambio de modos
+  4   | PD4       |                   | Led modo (1)              | Indicación modo (1)
+  5   | PC6       | PWM               | Led modo (2)              | Indicación modo (2)
+  6   | PD7       |                   | Pulsador Velocidad Luces  | 
+  7   | PE6       | INT6              | Pulsador Velocidad Mouse  | 
+  8   | PB4       |                   | Bluetooth                 | Rx BT / Tx Arduino
+  9   | PB5       | PWM               | Bluetooth                 | Tx BT / Rx Arduino
+  10	| PB6       | PWM               | Buzzer                    |  
+  16	| PB2       |                   | LEDMATRIX_ROW_1           | Matriz GND
+  14	| PB3       |                   | LEDMATRIX_ROW_2           | Matriz GND
+  15	| PB1       |                   | LEDMATRIX_ROW_3           | Matriz GND
+  A0	| PF7       |                   | LEDMATRIX_COL_1           | Matriz VCC
+  A1	| PF6       |                   | LEDMATRIX_COL_2           | Matriz VCC
+  A2	| PF5       |                   | LEDMATRIX_COL_3           | Matriz VCC
+  A3	| PF4       |                   |                           | 
 */
 
 //---------------------------------------------------------------- Librerías
@@ -31,7 +31,7 @@
 #define MAX_VEL_LEDS 3    // (1) 0.5 seg - (2) 1 seg - (3) 2 seg
 #define MAX_MODOS 3       // (1)Mouse de 1 capa - (2)Mouse de 2 capas - (3)Pictograma
 #define MAX_VEL_MOUSE 3 
-#define SONIDO_DEL_MAL  
+//#define SONIDO_DEL_MAL  
 
 const int PULSADOR_USUARIO = 2,
           PULSADOR_MODO = 3,
@@ -42,12 +42,12 @@ const int PULSADOR_USUARIO = 2,
           BLUETOOTH_TX = 8,
           BLUETOOTH_RX = 9,
           BUZZER = 10,
-          LEDMATRIX_COL_1 = A0, 
-          LEDMATRIX_COL_2 = A1, 
-          LEDMATRIX_COL_3 = A2, 
           LEDMATRIX_ROW_1 = 16, 
           LEDMATRIX_ROW_2 = 14, 
-          LEDMATRIX_ROW_3 = 15; 
+          LEDMATRIX_ROW_3 = 15, 
+          LEDMATRIX_COL_1 = A0, 
+          LEDMATRIX_COL_2 = A1, 
+          LEDMATRIX_COL_3 = A2; 
 SoftwareSerial BT(BLUETOOTH_RX, BLUETOOTH_TX);  //ArudinoRX ArduinoTX, se conectan al revés con el módulo BT 
           
 // Matriz leds
@@ -63,22 +63,22 @@ bool arrayLedsEncendidos[3][3] = {{0, 0, 0},
                                   {0, 0, 0}};
 
 int matrizFila = 0, matrizColumna = 0; 
-bool columnaSelecionada = 0;
 bool userInput = 0;
 
 // Modos
 const int SECUENCIA_MODO_2[2][5][2] = { {{1,0},{0,1},{2,1},{1,2},{1,1}},
                                         {{0,0},{2,0},{0,2},{2,2},{1,1}}};
-int indexSecuenciaModo2 = 0;
+bool columnaSelecionada = 0;
 bool capaModo2 = 0;
+int indexSecuenciaModo2 = 0;
 
 // Pulsadores
 const int TIME_THRESHOLD = 200;
-long startTimePulsadorUsuario = 0, startTimePulsadorModo = 0, startTimePulsadorVelLuces = 0, startTimePulsadorVelMouse = 0;
-int lastPulsVelLucesState = 0, lastPulsVelMouseState = 0;
+unsigned long startTimePulsadorUsuario = 0, startTimePulsadorModo = 0, startTimePulsadorVelLuces = 0, startTimePulsadorVelMouse = 0;
+bool lastPulsVelLucesState = 0, pulsVelLucesState = 0, lastPulsVelMouseState = 0, pulsVelMouseState = 0;
  
 const int MOUSE_THRESHOLD = 100;
-long mouseLastReady = 0;
+unsigned long mouseLastReady = 0;
 
 // Buzzer
 const int TONOS_MODO_1[3][3] = {  {261, 293, 329},
@@ -101,12 +101,13 @@ const int BUZZER_SECUENCIA_TIME_ON = 250;
 //const int TIMER1_INTERRUPTS[MAX_VEL_LEDS][2] = {{31250, 0},    // 0.5 seg, PS: 256   OCR: 31250 
 //                                                {65000, 0},    // 1 seg,   PS: 256   OCR: 65000 
 //                                                {31250, 1}};   // 2 seg,   PS: 1024  OCR: 31250 
-const int TIMER1_INTERRUPTS[] = {200, 100, 50};
+const int TIMER1_INTERRUPTS[MAX_VEL_LEDS] = {200, 100, 50};
 int timer1InterruptIndex = 1;
 int timer1InterruptCounter = 0, timer1InterruptThreshold = 100;
 
-// Mouse
-int modo = 1, velMouse = 1, range = 5, mov = range * velMouse, comando; //comando almacena datos bluetooth
+// Mouse`
+const int MOV_MOUSE[MAX_VEL_MOUSE] = {5, 10, 15};
+int modo = 1, movIndex = 0, mov = MOV_MOUSE[movIndex], comando; //comando almacena datos bluetooth
 
 //---------------------------------------------------------------- Setup
 void setup() {
@@ -121,27 +122,28 @@ void setup() {
   pinMode(PULSADOR_VELOCIDAD_LUCES, INPUT);
   pinMode(PULSADOR_VELOCIDAD_MOUSE, INPUT);
   noInterrupts();
-  //Timers
+  // Timers
   setupTimer1();
   // Interrupciones de pulsador por rising edge
   attachInterrupt(digitalPinToInterrupt(PULSADOR_USUARIO), selectorGeneral, RISING);
   attachInterrupt(digitalPinToInterrupt(PULSADOR_MODO), selectorModo, RISING);
   interrupts();
-  //USB
-  //BT
-  //Valores iniciales
+  // Valores iniciales
   configuracionModo();
+  // USB
   Serial.begin(9600);
-  // Keyboard.begin();
+  Keyboard.begin();
+  // BT
   // BT.begin(9600);
 }
 
 //---------------------------------------------------------------- Loop
-void loop() {
+void loop() {  
   if (userInput == 1 && (modo == 1 || modo == 2)) 
     mouseControl();
-  pulsadorVelocidadLucesPooling();
-  pulsadorVelocidadMousePooling();
+  // pulsadorVelocidadLucesPooling();
+  funcionPulsadorAntiRebotePooling(&PULSADOR_VELOCIDAD_LUCES, &pulsVelLucesState, &lastPulsVelLucesState, &startTimePulsadorVelLuces, &cambioVelocidadLuces);
+  funcionPulsadorAntiRebotePooling(&PULSADOR_VELOCIDAD_MOUSE, &pulsVelMouseState, &lastPulsVelMouseState, &startTimePulsadorVelMouse, &cambioVelocidadMouse);
   Bluetooth();
   if (avisoBuzzerActivo > 0 && buzzerCounter >= BUZZER_TIME_OFF){
     avisoCambioVelBuzzer();
@@ -346,6 +348,24 @@ void secuenciaLedPorColumna(){
   #endif
 }
 
+void funcionPulsadorAntiRebotePooling(int* pulsador, bool* state, bool* lastState, unsigned long* startTime, void (*funcionAsociada)()){
+  int lectura = digitalRead(*pulsador);
+  
+  if (lectura != *lastState)
+    *startTime = millis();
+    
+  if ((millis() - *startTime) > TIME_THRESHOLD) {
+    if (lectura != *state) {
+      *state = lectura;
+      if(*state == HIGH){
+        Serial.println("Pulsador velocidad mouse");
+        funcionAsociada();
+      }
+    }
+  }
+  *lastState = lectura;
+}
+
 void secuenciaLedPorCapas(){
   digitalWrite(MATRIZ_LED[0][SECUENCIA_MODO_2[capaModo2][indexSecuenciaModo2][0]], LOW);
   digitalWrite(MATRIZ_LED[1][SECUENCIA_MODO_2[capaModo2][indexSecuenciaModo2][1]], HIGH);
@@ -358,22 +378,6 @@ void secuenciaLedPorCapas(){
     if(avisoBuzzerActivo == 0)
       tone(BUZZER, TONOS_MODO_2[capaModo2][indexSecuenciaModo2], BUZZER_SECUENCIA_TIME_ON);
   #endif
-}
-
-// Capaz se puede usar la misma función de pooling pasando como argumentos las distintas variables de interés para cada pulsador 
-void pulsadorVelocidadLucesPooling(){
-  int lectura = digitalRead(PULSADOR_VELOCIDAD_LUCES);
-  
-  if (lastPulsVelLucesState == LOW && lectura != lastPulsVelLucesState) {
-    startTimePulsadorVelLuces = millis();
-  }
-  if ((millis() - startTimePulsadorVelLuces) > TIME_THRESHOLD) {
-    if (lastPulsVelLucesState == HIGH && lectura != lastPulsVelLucesState) {
-      Serial.println("Pulsador velocidad luces");
-      cambioVelocidadLuces();
-    }
-  }
-  lastPulsVelLucesState = lectura;
 }
 
 void cambioVelocidadLuces(){
@@ -391,28 +395,13 @@ void cambioVelocidadLuces(){
   interrupts();
 }
 
-void pulsadorVelocidadMousePooling(){
-  int lectura = digitalRead(PULSADOR_VELOCIDAD_MOUSE);
-
-  if (lastPulsVelMouseState == LOW && lectura != lastPulsVelMouseState) {
-    startTimePulsadorVelMouse = millis();
-  }
-  if ((millis() - startTimePulsadorVelMouse) > TIME_THRESHOLD) {
-    if (lastPulsVelMouseState == HIGH && lectura != lastPulsVelMouseState) {
-      Serial.println("Pulsador velocidad mouse");
-      cambioVelocidadMouse();
-    }
-  }
-  lastPulsVelMouseState = lectura;
-}
-
 void cambioVelocidadMouse(){
-  velMouse == MAX_VEL_MOUSE ? velMouse = 1 : velMouse++;
+  movIndex == MAX_VEL_MOUSE - 1 ? movIndex = 0 : movIndex++;
   Serial.print("Velocidad del mouse: ");
-  Serial.println(velMouse);
-  avisoBuzzerActivo = velMouse;
+  Serial.println(movIndex);
+  avisoBuzzerActivo = movIndex + 1;
+  mov = MOV_MOUSE[movIndex];
   avisoTone = 523;
-  mov = velMouse*range;
 }
 
 void avisoCambioVelBuzzer(){
@@ -426,12 +415,19 @@ bool mouseReady(){
   return (millis() - mouseLastReady) > MOUSE_THRESHOLD;
 }
 
+void returnToSequence(){
+  TIMSK1 |= (1 << OCIE1A);    // Output compare Timer1 A Interrupt Enable
+  TIMSK0 &= ~(1 << OCIE0A);   // Output compare Timer3 A Interrupt Disable 
+  userInput = !userInput;
+}
+
 void mouseControl() {
   switch (estado()) {
-    //    case 7:
-    //      Keyboard.press(KEY_ESC); //tecla escape posible necesidad de pequeña espera
-    //      Keyboard.release(KEY_ESC);
-    //      break;
+    case 7:
+      Keyboard.press(KEY_ESC); //tecla escape posible necesidad de pequeña espera
+      Keyboard.release(KEY_ESC);
+      returnToSequence();
+      break;
     case 8:
       if(mouseReady()){
         mouseLastReady = millis();
@@ -439,9 +435,10 @@ void mouseControl() {
         Mouse.move(0, (-mov), 0); //flecha arriba    10=range varias experimentalmente
       }
       break;
-    // case 9:
-
-    // break;
+    case 9:
+      Mouse.isPressed(MOUSE_LEFT) ? Mouse.release(MOUSE_LEFT) : Mouse.press(MOUSE_LEFT); 
+      returnToSequence();
+      break;
     case 4:
     if(mouseReady()){
         mouseLastReady = millis();
@@ -463,12 +460,8 @@ void mouseControl() {
       }
       break;
     case 1:
-      // Para los click se puede poner las opción que permita pulsar de nuevo capaz? Por el doble click, 
-      // salvo que sea otro led eso
-      TIMSK1 |= (1 << OCIE1A);    // Output compare Timer1 A Interrupt Enable
-      TIMSK0 &= ~(1 << OCIE0A);   // Output compare Timer3 A Interrupt Disable 
-      userInput = !userInput;
       Mouse.click(MOUSE_LEFT);
+      returnToSequence();
       break;
     case 2:
       if(mouseReady()){
@@ -478,10 +471,8 @@ void mouseControl() {
       }
       break;
     case 3:
-      TIMSK1 |= (1 << OCIE1A);    // Output compare Timer1 A Interrupt Enable
-      TIMSK0 &= ~(1 << OCIE0A);   // Output compare Timer3 A Interrupt Disable 
-      userInput = !userInput;
       Mouse.click(MOUSE_RIGHT);   //click derecho
+      returnToSequence();
       break;
     default:
       break;
@@ -508,15 +499,13 @@ void Bluetooth () { // a=arriba, b=below, d=derecha, i=izquierda, y=click izquie
         Keyboard.press(KEY_ESC); //tecla escape posible necesidad de pequeña espera
         Keyboard.release(KEY_ESC);
         break;        
-
       case 'y':
         Mouse.click(MOUSE_LEFT);
         break;
       case 'z':
         Mouse.click(MOUSE_RIGHT);
         break;
-
-        //agregar funciones de configuración
+      //agregar funciones de configuración
     }
   }
 }
