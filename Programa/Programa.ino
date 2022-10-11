@@ -453,7 +453,6 @@ void mouseControl() {
       if(modo == 2)
         capaModo2 = !capaModo2;
       TIMSK1 |= (1 << OCIE1A);    // Output compare Timer1 A Interrupt Enable
-      TIMSK0 &= ~(1 << OCIE0A);   // Output compare Timer3 A Interrupt Disable 
       userInput = !userInput;
       break;
     case 6:
