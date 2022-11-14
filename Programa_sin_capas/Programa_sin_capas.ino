@@ -29,7 +29,7 @@
 
 //---------------------------------------------------------------- Declaraciones
 #define MAX_VEL_LEDS 3    // (1) 0.5 seg - (2) 1 seg - (3) 2 seg
-#define MAX_MODOS 3       // (1)Mouse de 1 capa - (2)Mouse de 2 capas - (3)Pictograma
+#define MAX_MODOS 2       // (1)Mouse de 1 capa - (2)Pictograma
 #define MAX_VEL_MOUSE 3 
 //#define SONIDO_DEL_MAL  
 
@@ -66,11 +66,7 @@ int matrizFila = 0, matrizColumna = 0;
 bool userInput = 0;
 
 // Modos
-const int SECUENCIA_MODO_2[2][5][2] = { {{1,0},{0,1},{2,1},{1,2},{1,1}},
-                                        {{0,0},{2,0},{0,2},{2,2},{1,1}}};
 bool columnaSelecionada = 0;
-bool capaModo2 = 0;
-int indexSecuenciaModo2 = 0;
 
 // Pulsadores
 const int TIME_THRESHOLD = 200;
@@ -84,9 +80,7 @@ unsigned long mouseLastReady = 0;
 const int TONOS_MODO_1[3][3] = {  {261, 293, 329},
                                   {349, 392, 440},
                                   {493, 523, 587}};
-const int TONOS_MODO_2[2][5] = {  {261, 293, 329, 349, 440},
-                                  {523, 587, 659, 698, 784}};
-const int TONOS_MODO_3[2][3] = {  {261, 329, 349},
+const int TONOS_MODO_2[2][3] = {  {261, 329, 349},
                                   {293, 349, 440}};
 
                             
@@ -139,7 +133,7 @@ void setup() {
 
 //---------------------------------------------------------------- Loop
 void loop() {  
-  if (userInput == 1 && (modo == 1 || modo == 2)) 
+  if (userInput == 1 && modo == 1) 
     mouseControl();
   // pulsadorVelocidadLucesPooling();
   funcionPulsadorAntiRebotePooling(&PULSADOR_VELOCIDAD_LUCES, &pulsVelLucesState, &lastPulsVelLucesState, &startTimePulsadorVelLuces, &cambioVelocidadLuces);
@@ -162,9 +156,6 @@ ISR(TIMER1_COMPA_vect) {
         secuenciaLedIndividual();
         break;
       case 2:
-        secuenciaLedPorCapas();
-        break;
-      case 3:
         if(!columnaSelecionada)
           secuenciaColumnas();
         else  
@@ -193,11 +184,6 @@ void selectorGeneral(){
           break;
         
         case 2:
-          TIMSK1 &= ~(1 << OCIE1A);   // Output compare Timer1 A Interrupt Disable
-          userInput = !userInput;        
-          break;
-        
-        case 3:
           if(!columnaSelecionada){
             apagarLeds();
             digitalWrite(MATRIZ_LED[1][matrizFila], LOW);
@@ -214,7 +200,7 @@ void selectorGeneral(){
     else{
       TIMSK1 |= (1 << OCIE1A);    // Output compare Timer1 A Interrupt Enable
       userInput = !userInput;
-      if(modo == 3){
+      if(modo == 2){
         configuracionModo();
       }
     }
@@ -263,17 +249,8 @@ void configuracionModo(){
       digitalWrite(MATRIZ_LED[1][matrizFila], LOW);
       digitalWrite(MATRIZ_LED[0][matrizColumna], HIGH);
       break; 
-    
-    case 2:
-      capaModo2 = 0;
-      digitalWrite(LED_MODO_2, HIGH);
-      indexSecuenciaModo2 = 0;
-      digitalWrite(MATRIZ_LED[0][SECUENCIA_MODO_2[capaModo2][indexSecuenciaModo2][0]], HIGH);
-      digitalWrite(MATRIZ_LED[1][SECUENCIA_MODO_2[capaModo2][indexSecuenciaModo2][1]], LOW);
-      break;
 
-    case 3:
-      digitalWrite(LED_MODO_1, HIGH);
+    case 2:
       digitalWrite(LED_MODO_2, HIGH);
       for(int fila = 0; fila < 3; fila++){
         digitalWrite(MATRIZ_LED[1][fila], LOW);
@@ -366,20 +343,6 @@ void funcionPulsadorAntiRebotePooling(int* pulsador, bool* state, bool* lastStat
   *lastState = lectura;
 }
 
-void secuenciaLedPorCapas(){
-  digitalWrite(MATRIZ_LED[0][SECUENCIA_MODO_2[capaModo2][indexSecuenciaModo2][0]], LOW);
-  digitalWrite(MATRIZ_LED[1][SECUENCIA_MODO_2[capaModo2][indexSecuenciaModo2][1]], HIGH);
-  arrayLedsEncendidos[SECUENCIA_MODO_2[capaModo2][indexSecuenciaModo2][1]][SECUENCIA_MODO_2[capaModo2][indexSecuenciaModo2][0]] = 0;
-  indexSecuenciaModo2 == 4 ? indexSecuenciaModo2 = 0 : indexSecuenciaModo2++;
-  digitalWrite(MATRIZ_LED[0][SECUENCIA_MODO_2[capaModo2][indexSecuenciaModo2][0]], HIGH);
-  digitalWrite(MATRIZ_LED[1][SECUENCIA_MODO_2[capaModo2][indexSecuenciaModo2][1]], LOW);
-  arrayLedsEncendidos[SECUENCIA_MODO_2[capaModo2][indexSecuenciaModo2][1]][SECUENCIA_MODO_2[capaModo2][indexSecuenciaModo2][0]] = 1;
-  #ifdef SONIDO_DEL_MAL
-    if(avisoBuzzerActivo == 0)
-      tone(BUZZER, TONOS_MODO_2[capaModo2][indexSecuenciaModo2], BUZZER_SECUENCIA_TIME_ON);
-  #endif
-}
-
 void cambioVelocidadLuces(){
   Serial.println("Velocidad de display");
   noInterrupts();
@@ -447,8 +410,6 @@ void mouseControl() {
       }
       break;
     case 5:
-      if(modo == 2)
-        capaModo2 = !capaModo2;
       TIMSK1 |= (1 << OCIE1A);    // Output compare Timer1 A Interrupt Enable
       userInput = !userInput;
       break;
