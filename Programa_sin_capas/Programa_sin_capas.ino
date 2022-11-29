@@ -119,7 +119,7 @@ void setup() {
   // Timers
   setupTimer1();
   // Interrupciones de pulsador por rising edge
-  attachInterrupt(digitalPinToInterrupt(PULSADOR_USUARIO), selectorGeneral, RISING);
+  attachInterrupt(digitalPinToInterrupt(PULSADOR_USUARIO), selectorGeneral, FALLING);
   attachInterrupt(digitalPinToInterrupt(PULSADOR_MODO), selectorModo, RISING);
   interrupts();
   // Valores iniciales
@@ -128,7 +128,7 @@ void setup() {
   Serial.begin(9600);
   Keyboard.begin();
   // BT
-  // BT.begin(9600);
+  BT.begin(9600);
 }
 
 //---------------------------------------------------------------- Loop
@@ -443,30 +443,104 @@ void mouseControl() {
 void Bluetooth () { // a=arriba, b=below, d=derecha, i=izquierda, y=click izquierdo, z=click derecho
   if (BT.available() > 0) {    // lee el bluetooth y almacena en serial
     comando = BT.read();
+    
     switch (comando) {
       case 'a':
         Mouse.move(0, -mov, 0);
+        Serial.println("BT Mouse arriba"); 
         break;
       case 'b':
+        Serial.println("BT Mouse abajo"); 
         Mouse.move(0, mov, 0);
         break;
       case 'd':
+        Serial.println("BT Mouse derecha"); 
         Mouse.move(mov, 0, 0);
         break;
       case 'i':
+        Serial.println("BT Mouse izquierda"); 
         Mouse.move(-mov, 0, 0);
         break;
       case 'e':
+        Serial.println("BT ESC"); 
         Keyboard.press(KEY_ESC); //tecla escape posible necesidad de pequeña espera
         Keyboard.release(KEY_ESC);
         break;        
       case 'y':
+        Serial.println("BT Left click"); 
         Mouse.click(MOUSE_LEFT);
         break;
       case 'z':
+        Serial.println("BT Right click"); 
         Mouse.click(MOUSE_RIGHT);
         break;
-      //agregar funciones de configuración
+    
+    // MODOS
+      case 'u':
+        Serial.println("BT Modo 1");
+        modo = 1;
+        configuracionModo();
+        break;
+      case 'o':
+        Serial.println("BT Modo 2");
+        modo = 2;
+        configuracionModo();
+        break;
+
+      // Velocidad LED
+      case 's': //VLed baja
+        Serial.println("BT Vel 0");
+        noInterrupts();
+        timer1InterruptIndex = 0;
+        timer1InterruptThreshold = TIMER1_INTERRUPTS[timer1InterruptIndex];
+        timer1InterruptCounter = 0;
+        avisoTone = 261;
+        avisoBuzzerActivo = timer1InterruptIndex + 1;
+        interrupts();
+        break;
+      case 'm': //VLed media
+        Serial.println("BT Vel 1");
+        noInterrupts();
+        timer1InterruptIndex = 1;
+        timer1InterruptThreshold = TIMER1_INTERRUPTS[timer1InterruptIndex];
+        timer1InterruptCounter = 0;
+        avisoTone = 261;
+        avisoBuzzerActivo = timer1InterruptIndex + 1;
+        interrupts();
+        break;
+      case 'w': //VLed alta
+        Serial.println("BT Vel 2");
+        noInterrupts();
+        timer1InterruptIndex = 2;
+        timer1InterruptThreshold = TIMER1_INTERRUPTS[timer1InterruptIndex];
+        timer1InterruptCounter = 0;
+        avisoTone = 261;
+        avisoBuzzerActivo = timer1InterruptIndex + 1;
+        interrupts();
+        break;
+        
+      // Velocidad MOUSE
+      case 'k': //VMouse baja
+        Serial.println("BT Mouse 0");
+        movIndex = 0;
+        mov = MOV_MOUSE[movIndex];
+        avisoTone = 523;
+        avisoBuzzerActivo = movIndex + 1;
+        break;
+      case 'n': //VMouse medua
+        Serial.println("BT Mouse 1");
+        movIndex = 1;
+        mov = MOV_MOUSE[movIndex];
+        avisoTone = 523;
+        avisoBuzzerActivo = movIndex + 1;
+        break;
+      case 'p': //VMouse alta
+        Serial.println("BT Mouse 2");
+        movIndex = 2;
+        mov = MOV_MOUSE[movIndex];
+        avisoTone = 523;
+        avisoBuzzerActivo = movIndex + 1;
+        break;
     }
   }
 }
