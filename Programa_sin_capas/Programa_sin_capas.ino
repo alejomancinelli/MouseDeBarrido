@@ -91,10 +91,6 @@ const int BUZZER_SECUENCIA_TIME_ON = 250;
 
 
 // Timers: Calculo OCR = t * (f / PS)
-// OCR1A, TCCR1B -> CS10
-//const int TIMER1_INTERRUPTS[MAX_VEL_LEDS][2] = {{31250, 0},    // 0.5 seg, PS: 256   OCR: 31250 
-//                                                {65000, 0},    // 1 seg,   PS: 256   OCR: 65000 
-//                                                {31250, 1}};   // 2 seg,   PS: 1024  OCR: 31250 
 const int TIMER1_INTERRUPTS[MAX_VEL_LEDS] = {200, 100, 50};
 int timer1InterruptIndex = 1;
 int timer1InterruptCounter = 0, timer1InterruptThreshold = 100;
@@ -148,12 +144,15 @@ void loop() {
         break;
     }
   }
+  
   if (userInput == 1 && modo == 1) 
     mouseControl();
-  // pulsadorVelocidadLucesPooling();
+
   funcionPulsadorAntiRebotePooling(&PULSADOR_VELOCIDAD_LUCES, &pulsVelLucesState, &lastPulsVelLucesState, &startTimePulsadorVelLuces, &cambioVelocidadLuces);
   funcionPulsadorAntiRebotePooling(&PULSADOR_VELOCIDAD_MOUSE, &pulsVelMouseState, &lastPulsVelMouseState, &startTimePulsadorVelMouse, &cambioVelocidadMouse);
+  
   Bluetooth();
+  
   if (avisoBuzzerActivo > 0 && buzzerCounter >= BUZZER_TIME_OFF){
     avisoCambioVelBuzzer();
     Serial.println("BEEP");
