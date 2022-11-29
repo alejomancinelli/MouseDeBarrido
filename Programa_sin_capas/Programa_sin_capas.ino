@@ -63,7 +63,7 @@ bool arrayLedsEncendidos[3][3] = {{0, 0, 0},
                                   {0, 0, 0}};
 
 int matrizFila = 0, matrizColumna = 0; 
-bool userInput = 0;
+bool userInput = 0, cambioSecuenciaLed = 0;
 
 // Modos
 bool columnaSelecionada = 0;
@@ -133,6 +133,21 @@ void setup() {
 
 //---------------------------------------------------------------- Loop
 void loop() {  
+  if(cambioSecuenciaLed == 1){
+    switch(modo) {
+      case 1:
+        secuenciaLedIndividual();
+        break;
+      case 2:
+        if(!columnaSelecionada)
+          secuenciaColumnas();
+        else  
+          secuenciaLedPorColumna();  
+        break;
+      default:
+        break;
+    }
+  }
   if (userInput == 1 && modo == 1) 
     mouseControl();
   // pulsadorVelocidadLucesPooling();
@@ -150,20 +165,8 @@ void loop() {
 ISR(TIMER1_COMPA_vect) {
   timer1InterruptCounter++;
   if(timer1InterruptCounter == timer1InterruptThreshold){
+    cambioSecuenciaLed = 1;
     timer1InterruptCounter = 0;
-    switch(modo) {
-      case 1:
-        secuenciaLedIndividual();
-        break;
-      case 2:
-        if(!columnaSelecionada)
-          secuenciaColumnas();
-        else  
-          secuenciaLedPorColumna();  
-        break;
-      default:
-        break;
-    }
   }
   if(avisoBuzzerActivo != 0)
     buzzerCounter++;
@@ -301,6 +304,7 @@ void secuenciaLedIndividual() {
     if(avisoBuzzerActivo == 0)
       tone(BUZZER, TONOS_MODO_1[matrizFila][matrizColumna], BUZZER_SECUENCIA_TIME_ON);
   #endif
+  cambioSecuenciaLed = 0;
 }
 
 void secuenciaColumnas(){
@@ -311,6 +315,7 @@ void secuenciaColumnas(){
     if(avisoBuzzerActivo == 0)
       tone(BUZZER, TONOS_MODO_3[0][matrizColumna], BUZZER_SECUENCIA_TIME_ON);
   #endif
+  cambioSecuenciaLed = 0;
 }
 
 void secuenciaLedPorColumna(){
@@ -323,6 +328,7 @@ void secuenciaLedPorColumna(){
     if(avisoBuzzerActivo == 0)
       tone(BUZZER, TONOS_MODO_3[1][matrizFila], BUZZER_SECUENCIA_TIME_ON);
   #endif
+  cambioSecuenciaLed = 0;
 }
 
 void funcionPulsadorAntiRebotePooling(int* pulsador, bool* state, bool* lastState, unsigned long* startTime, void (*funcionAsociada)()){
