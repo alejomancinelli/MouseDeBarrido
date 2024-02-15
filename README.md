@@ -4,7 +4,7 @@ Este dispositivo permite controlar un mouse de computadora utilizando solamente 
 
 Además, se contará con un modo pictograma, permitiendo al usuario expresar distintas necesidades. El film de imágenes se puede reemplazar según sea necesario.
 
-![Referencias matriz led](https://github.com/alejomancinelli/MouseDeBarrido/blob/Alejo_branch/Imagenes/matrizLed.jpg)
+![Referencias matriz led](https://github.com/alejomancinelli/MouseDeBarrido/blob/main/Imagenes/matrizLed.jpg)
 
 ## Modos
 
