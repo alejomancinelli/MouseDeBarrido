@@ -93,8 +93,8 @@ const int BUZZER_SECUENCIA_TIME_ON = 250;
 // Timers: Calculo OCR = t * (f / PS)
 const int TIMER1_INTERRUPTS[MAX_VEL_LEDS] = {200, 100, 50};
 int timer1InterruptIndex = 1;
-int timer1InterruptCounter = 0, timer1InterruptThreshold =  ;
-
+int timer1InterruptCounter = 0, timer1InterruptThreshold = 100;   
+ 
 // Mouse`
 const int MOV_MOUSE[MAX_VEL_MOUSE] = {5, 10, 15};
 int modo = 1, movIndex = 0, mov = MOV_MOUSE[movIndex], comando; //comando almacena datos bluetooth
